@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>四則運算冒險島 - 終極穩定版</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; --bg: #ecf0f1; --correct: #27ae60; --wrong: #e74c3c; }
+        body { font-family: '微軟正黑體', sans-serif; background: var(--bg); margin: 0; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        .screen.active { display: flex; }
+        
+        .header { width: 100%; background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; position: absolute; top:0; z-index: 10;}
+        .btn { padding: 15px 20px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 10px; color: white; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,0.2); user-select: none; transition: 0.2s;}
+        .btn:active { transform: translateY(6px); box-shadow: none; }
+        .btn:disabled { background: #bdc3c7 !important; cursor: not-allowed; box-shadow: none; transform: none; }
+        
+        .login-box { background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px;}
+        .input-login { font-size: 1.5rem; padding: 10px; border: 2px solid #ccc; border-radius: 10px; margin: 20px 0; text-align: center; width: 80%; }
+        
+        .map-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px; margin-top: 60px; }
+        .island-card { background: white; padding: 20px; border-radius: 15px; width: 120px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 5px solid #ddd; font-size: 1.2rem; font-weight: bold;}
+        .island-card:active { transform: scale(0.95); }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .record-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 1.1rem; }
+        .record-history { font-size: 0.85rem; color: #7f8c8d; text-align: right; margin-top: 5px;}
+
+        .history-table-container { width: 95%; max-width: 800px; max-height: 70vh; overflow-y: auto; background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 60px;}
+        .history-table { width: 100%; border-collapse: collapse; text-align: center; }
+        .history-table th { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; }
+        .history-table td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
+        .history-table tr:hover { background: #f9f9f9; }
+
+        .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; margin-top: 50px; width: 100%; box-sizing: border-box;}
+        #animation-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 600px; }
+        .theater { background: #a2d9ce; width: 100%; height: 250px; border-radius: 20px; position: relative; overflow: hidden; border: 5px solid var(--primary); box-shadow: 0 8px 0 rgba(44, 62, 80, 0.2); margin-bottom: 20px;}
+        .subtitle { min-height: 60px; font-size: 1.3rem; font-weight: bold; color: var(--primary); text-align: center; background: white; padding: 10px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; margin-bottom: 15px;}
+        .prop { position: absolute; transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); opacity: 0; font-size: 2.5rem; }
+        
+        #interactive-view { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .blackboard { background: #fff; border: 4px solid var(--primary); border-radius: 15px; padding: 20px; width: 90%; max-width: 500px; text-align: center; box-shadow: 0 8px 0 rgba(44, 62, 80, 0.2); margin-bottom: 15px; }
+        .zone-badge { background: var(--accent); color: white; padding: 5px 15px; border-radius: 20px; font-size: 1rem; margin-bottom: 15px; display: inline-block; }
+        .expression-display { font-size: 2.5rem; font-weight: bold; letter-spacing: 5px; color: #34495e; margin: 10px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
+        .expression-display span { padding: 5px 10px; border-radius: 10px; }
+        .highlight-hint { border: 4px dashed var(--wrong); background: #fadbd8; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        .answer-box { font-size: 2rem; width: 100px; text-align: center; border: 3px solid #bdc3c7; border-radius: 10px; padding: 5px; color: var(--primary); font-weight: bold; margin-top: 10px;}
+        .feedback { min-height: 60px; width: 90%; max-width: 500px; padding: 10px; border-radius: 10px; font-size: 1.1rem; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; white-space: pre-wrap; margin-bottom: 15px; }
+        .feedback.error { background: #fdedec; color: #c0392b; border-left: 8px solid #c0392b; }
+        .feedback.success { background: #e9f7ef; color: #27ae60; border-left: 8px solid #27ae60; }
+        .feedback.info { background: #ebf5fb; color: #2980b9; border-left: 8px solid #2980b9; }
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 90%; max-width: 350px; }
+        .btn-num { background: white; color: var(--primary); box-shadow: 0 6px 0 #bdc3c7; padding: 15px; font-size: 1.5rem; border-radius: 10px; border:none;}
+        .btn-submit { grid-column: span 3; background: #f39c12; box-shadow: 0 6px 0 #d35400; color: white; padding: 15px; border:none; border-radius: 10px; font-size: 1.5rem; font-weight: bold;}
+        
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; display: none; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="loading">📡 資料同步中...</div>
+
+    <div id="screen-login" class="screen active">
+        <div class="login-box">
+            <h1>🌴 四則運算冒險島</h1>
+            <p>請輸入一個不會和別人重複的專屬代碼</p>
+            <input type="text" id="username" class="input-login" placeholder="例如: 3A01小明">
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn" style="background:#27ae60; width:50%;" onclick="doAuth('register')">🌟 註冊新帳號</button>
+                <button class="btn" style="background:#2980b9; width:50%;" onclick="doAuth('login')">🔙 舊玩家登入</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-map" class="screen">
+        <div class="header">
+            <div>
+                👤 <span id="ui-nickname"></span>
+                <button onclick="showHistoryScreen()" style="margin-left:15px; padding:5px 10px; background:#9b59b6; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">📊 我的歷程</button>
+            </div>
+            <div>
+                ⭐ 總計：<span id="ui-total-stars">0</span>
+                <button onclick="location.reload()" style="margin-left:15px; padding:5px 10px; background:#e74c3c; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">登出</button>
+            </div>
+        </div>
+        <h2 style="margin-top: 80px;">選擇要探險的島嶼</h2>
+        <div class="map-container">
+            <div class="island-card" style="border-color:#4CAF50;" onclick="showIslandModal('加法島')">➕<br>加法島</div>
+            <div class="island-card" style="border-color:#FF9800;" onclick="showIslandModal('減法島')">➖<br>減法島</div>
+            <div class="island-card" style="border-color:#9C27B0;" onclick="showIslandModal('乘法島')">✖️<br>乘法島</div>
+            <div class="island-card" style="border-color:#2196F3;" onclick="showIslandModal('除法島')">➗<br>除法島</div>
+            <div class="island-card" style="border-color:#34495e; background:#ecf0f1;" onclick="showIslandModal('四則運算島')">🏛️<br>四則運算島</div>
+        </div>
+    </div>
+
+    <div id="screen-history" class="screen">
+        <div class="header">
+            <button onclick="switchScreen('screen-map')" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
+            <div style="color:var(--accent); font-size:1.5rem; font-weight:bold;">📊 我的學習歷程檔案</div>
+            <div>⭐ 總計：<span id="ui-history-total">0</span></div>
+        </div>
+        <div class="history-table-container">
+            <table class="history-table">
+                <thead><tr><th>挑戰時間</th><th>島嶼</th><th>關卡區域</th><th>答對率</th><th>獲得星星</th></tr></thead>
+                <tbody id="history-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="modal-report" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title" style="color:var(--primary); margin-top:0;">島嶼挑戰紀錄</h2>
+            <div id="modal-records"></div>
+            <div id="modal-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <div id="screen-game" class="screen">
+        <div class="header">
+            <button onclick="backToMap()" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
+            <div id="ui-island-name" style="color:var(--accent); font-weight:bold; font-size:1.2rem;"></div>
+            <div>本局獲得：⭐ <span id="ui-island-stars">0</span></div>
+        </div>
+        <div class="game-container">
+            <div id="animation-view">
+                <div id="theater-stage" class="theater"></div>
+                <div id="theater-sub" class="subtitle">動畫載入中...</div>
+                <button class="btn" style="background:var(--correct);" onclick="endAnimation()">➡️ 換我試試看 (進入測驗)</button>
+            </div>
+            <div id="interactive-view">
+                <div class="blackboard">
+                    <div id="ui-zone" class="zone-badge">概念學習區</div>
+                    <div class="expression-display" id="ui-expression"></div>
+                    <div>
+                        <span style="font-size: 2rem; font-weight: bold;">=</span>
+                        <input type="text" id="ui-input" class="answer-box" readonly placeholder="?">
+                    </div>
+                </div>
+                <div id="ui-feedback" class="feedback info">🤖 請算出黑板上的答案！</div>
+                <div class="numpad">
+                    <button class="btn-num" onclick="typeNum(1)">1</button><button class="btn-num" onclick="typeNum(2)">2</button><button class="btn-num" onclick="typeNum(3)">3</button>
+                    <button class="btn-num" onclick="typeNum(4)">4</button><button class="btn-num" onclick="typeNum(5)">5</button><button class="btn-num" onclick="typeNum(6)">6</button>
+                    <button class="btn-num" onclick="typeNum(7)">7</button><button class="btn-num" onclick="typeNum(8)">8</button><button class="btn-num" onclick="typeNum(9)">9</button>
+                    <button class="btn-num" style="background:var(--accent); color:white;" onclick="typeNum('C')">清除</button><button class="btn-num" onclick="typeNum(0)">0</button><button class="btn-num" style="background:var(--accent); color:white;" onclick="typeNum('<')">倒退</button>
+                    <button class="btn-submit" id="btn-submit" onclick="submitAns()">✅ 送出答案</button>
+                    <button class="btn-submit" id="btn-next" onclick="nextQ()" style="display:none; background:var(--correct);">➡️ 下一題</button>
+                    <button class="btn-submit" id="btn-finish" onclick="backToMap()" style="display:none; background:var(--primary);">🏆 儲存成績回地圖</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🚨 請換成您的 GAS 網址
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxAQNfjduy7o0oYAGq_rDE3dpZfvEtz4TdHjNo_7q4XRHEDjO3yKlGlXuv_k__-iZsnmQ/exec"; 
+        
+        let currentUser = null;
+        let selectedIslandForModal = "";
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        async function apiCall(payload) {
+            if(GAS_URL.includes("請換成")) return { status: 'offline' };
+            try { 
+                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }); 
+                return await r.json(); 
+            } catch(e){ 
+                console.error("API 連線失敗", e);
+                return { status: 'error', message: '無法連接到伺服器，請檢查網址或重新整理！' }; 
+            }
+        }
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        async function doAuth(actionType) {
+            const username = document.getElementById('username').value.trim();
+            if(!username) return alert("請輸入代碼！");
+            
+            document.getElementById('loading').style.display = 'flex';
+            const res = await apiCall({ action: actionType, username: username });
+            document.getElementById('loading').style.display = 'none';
+            
+            // 🚨 強化防呆：連線失敗或找不到帳號的警告
+            if (res.status === 'error') { 
+                alert(res.message || "發生未知錯誤，請檢查伺服器連線。"); 
+                return; 
+            }
+            
+            if (res.status === 'offline') {
+                currentUser = { username: username, nickname: username, total_stars: 0, progress: {} };
+            } else {
+                currentUser = res.user_data;
+                if (typeof currentUser.progress === 'string') {
+                    try { currentUser.progress = JSON.parse(currentUser.progress); } catch(e) { currentUser.progress = {}; }
+                }
+            }
+            if (!currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
+            
+            document.getElementById('ui-nickname').innerText = currentUser.nickname;
+            document.getElementById('ui-total-stars').innerText = currentUser.total_stars || 0;
+            switchScreen('screen-map');
+        }
+
+        function showHistoryScreen() {
+            try {
+                document.getElementById('ui-history-total').innerText = currentUser.total_stars;
+                const tbody = document.getElementById('history-tbody');
+                tbody.innerHTML = "";
+                let allRecords = [];
+                
+                for (const [islandName, zones] of Object.entries(currentUser.progress)) {
+                    if (!zones || typeof zones !== 'object') continue;
+                    for (const [zoneName, records] of Object.entries(zones)) {
+                        if (!Array.isArray(records)) continue;
+                        let zoneZh = zoneName === "LEARNING" ? "概念學習區" : (zoneName === "PRACTICE" ? "適性練習區" : "掌握確認區");
+                        records.forEach(rec => {
+                            if (typeof rec === 'object' && rec.date) {
+                                allRecords.push({ island: islandName, zone: zoneZh, stars: rec.stars, acc: rec.accuracy, dateStr: rec.date, time: new Date(rec.date).getTime() });
+                            }
+                        });
+                    }
+                }
+
+                allRecords.sort((a, b) => b.time - a.time);
+                if (allRecords.length === 0) {
+                    tbody.innerHTML = "<tr><td colspan='5' style='padding:20px; color:#7f8c8d;'>目前還沒有挑戰紀錄喔！趕快去探險吧！</td></tr>";
+                } else {
+                    allRecords.forEach(r => {
+                        let starStr = r.stars > 0 ? "⭐".repeat(r.stars) : "完成";
+                        tbody.innerHTML += `<tr><td style="color:#7f8c8d; font-size:0.9rem;">${r.dateStr}</td><td style="font-weight:bold; color:var(--primary);">${r.island}</td><td>${r.zone}</td><td style="color:var(--accent); font-weight:bold;">${r.acc}%</td><td style="color:#f39c12;">${starStr}</td></tr>`;
+                    });
+                }
+                switchScreen('screen-history');
+            } catch (err) { console.error(err); alert("讀取歷程時發生狀況！"); }
+        }
+
+        function showIslandModal(island) {
+            try {
+                selectedIslandForModal = island;
+                document.getElementById('modal-title').innerText = `${island} 挑戰紀錄`;
+                let prog = currentUser.progress[island] || { "LEARNING": [], "PRACTICE": [], "MASTERY": [] };
+                
+                const getBestStars = (arr) => {
+                    if(!Array.isArray(arr) || arr.length === 0) return 0;
+                    let starsArr = arr.map(r => typeof r === 'object' ? r.stars : 0);
+                    return Math.max(...starsArr);
+                };
+
+                let bestLearn = getBestStars(prog["LEARNING"]);
+                let bestPrac = getBestStars(prog["PRACTICE"]);
+
+                let canPrac = bestLearn >= 2;
+                let canMast = bestPrac >= 2;
+
+                const renderRow = (title, arr) => {
+                    let text = "尚未挑戰";
+                    if(Array.isArray(arr) && arr.length > 0) {
+                        let best = getBestStars(arr);
+                        let history = arr.map(r => { let st = typeof r === 'object' ? r.stars : 0; return st > 0 ? `${st}⭐` : "完成"; }).join(", ");
+                        text = best > 0 ? `最佳: ${best}⭐ <div class="record-history">歷次: ${history}</div>` : `<div class="record-history">練習 ${arr.length} 次</div>`;
+                    }
+                    return `<div class="record-row"><strong>${title}</strong> <span>${text}</span></div>`;
+                };
+
+                document.getElementById('modal-records').innerHTML = renderRow("概念學習區", prog["LEARNING"]) + renderRow("適性練習區", prog["PRACTICE"]) + renderRow("掌握確認區", prog["MASTERY"]);
+
+                document.getElementById('modal-actions').innerHTML = `
+                    <button class="btn" style="background:#27ae60;" onclick="enterIslandFromModal('LEARNING')">▶️ 概念學習區 (含動畫)</button>
+                    <button class="btn" style="background:${canPrac ? '#f39c12' : '#bdc3c7'};" ${canPrac ? '' : 'disabled'} onclick="enterIslandFromModal('PRACTICE')">${canPrac ? '🚀 適性練習區' : '🔒 需學習區達 2 星解鎖'}</button>
+                    <button class="btn" style="background:${canMast ? '#e74c3c' : '#bdc3c7'};" ${canMast ? '' : 'disabled'} onclick="enterIslandFromModal('MASTERY')">${canMast ? '⚔️ 掌握確認區' : '🔒 需練習區達 2 星解鎖'}</button>
+                    <button class="btn" style="background:#95a5a6; margin-top:10px;" onclick="closeModal()">🔙 取消返回</button>
+                `;
+                document.getElementById('modal-report').style.display = 'flex';
+            } catch (err) { console.error(err); enterIslandFromModal('LEARNING'); }
+        }
+
+        function closeModal() { document.getElementById('modal-report').style.display = 'none'; }
+        
+        // 🌟 修正：確保從按鈕進入練習區時一定會產生題目
+        function enterIslandFromModal(targetZone) {
+            closeModal(); 
+            document.getElementById('ui-island-name').innerText = selectedIslandForModal;
+            GameFlowController.startIsland(selectedIslandForModal, targetZone);
+            switchScreen('screen-game'); 
+
+            if (targetZone === "LEARNING") {
+                AnimationEngine.play(selectedIslandForModal);
+            } else {
+                AnimationEngine.isPlaying = false;
+                document.getElementById('animation-view').style.display = 'none';
+                document.getElementById('interactive-view').style.display = 'flex';
+                // 強制呼叫出題函數，避免白畫面
+                GameFlowController.loadNextQuestion();
+                renderUI();
+            }
+        }
+
+        function backToMap() {
+            AnimationEngine.isPlaying = false;
+            if(currentUser) document.getElementById('ui-total-stars').innerText = currentUser.total_stars;
+            switchScreen('screen-map');
+        }
+
+        // 動畫引擎
+        const AnimationEngine = {
+            isPlaying: false,
+            play: async function(island) {
+                document.getElementById('animation-view').style.display = 'flex'; document.getElementById('interactive-view').style.display = 'none';
+                this.isPlaying = true; const stage = document.getElementById('theater-stage'); const sub = document.getElementById('theater-sub');
+                if (island === "加法島") {
+                    stage.style.background = "#a2d9ce";
+                    stage.innerHTML = `<div style="background:#5dade2;width:250px;height:100px;border-radius:50%;position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);"></div><div id="f1" class="prop" style="left:10%; top:20px;">🐸</div><div id="f2" class="prop" style="left:25%; top:20px;">🐸</div><div id="f3" class="prop" style="left:40%; top:20px;">🐸</div><div id="f4" class="prop" style="left:100%; top:20px;">🐸</div><div id="f5" class="prop" style="left:115%; top:20px;">🐸</div>`;
+                    sub.innerText = "「池塘裡原本有 3 隻青蛙...」"; await delay(500); if(!this.isPlaying) return; ['f1','f2','f3'].forEach(id => document.getElementById(id).style.opacity = 1);
+                    await delay(2000); if(!this.isPlaying) return; sub.innerText = "「草叢裡又跳來了 2 隻青蛙！」"; document.getElementById('f4').style.opacity = 1; document.getElementById('f4').style.left = '60%'; document.getElementById('f5').style.opacity = 1; document.getElementById('f5').style.left = '75%';
+                    await delay(2500); if(!this.isPlaying) return; sub.innerText = "「把它們合起來，一共有 5 隻青蛙！ (3 + 2 = 5)」"; for(let i=1; i<=5; i++) document.getElementById(`f${i}`).style.transform += ' translateY(120px)';
+                } else if (island === "減法島") {
+                    stage.style.background = "#f5cba7";
+                    stage.innerHTML = `<div style="background:#d35400;width:100px;height:100px;position:absolute;right:10px;bottom:10px;border-radius:10px;opacity:0.8;display:flex;align-items:center;justify-content:center;font-size:3rem;z-index:1;">📦</div><div id="t1" class="prop" style="left:10%; top:30%;">🧸</div><div id="t2" class="prop" style="left:25%; top:30%;">🧸</div><div id="t3" class="prop" style="left:40%; top:30%;">🚗</div><div id="t4" class="prop" style="left:10%; top:60%;">🚗</div><div id="t5" class="prop" style="left:25%; top:60%; z-index:2;">⚽</div><div id="t6" class="prop" style="left:40%; top:60%; z-index:2;">⚽</div>`;
+                    sub.innerText = "「地毯上原本有 6 件玩具...」"; await delay(500); if(!this.isPlaying) return; for(let i=1; i<=6; i++) document.getElementById(`t${i}`).style.opacity = 1;
+                    await delay(2500); if(!this.isPlaying) return; sub.innerText = "「把其中 2 件玩具收進箱子 (拿走)。」"; document.getElementById('t5').style.left = '75%'; document.getElementById('t5').style.top = '60%'; document.getElementById('t6').style.left = '85%'; document.getElementById('t6').style.top = '60%';
+                    await delay(2500); if(!this.isPlaying) return; sub.innerText = "「外面還剩下 4 件玩具！ (6 - 2 = 4)」"; document.getElementById('t5').style.opacity = 0.3; document.getElementById('t6').style.opacity = 0.3;
+                } else if (island === "乘法島") {
+                    stage.style.background = "#d2b4de";
+                    stage.innerHTML = `<div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="font-size:4rem;">🪴<div id="p1" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p2" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p3" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p4" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div></div>`;
+                    sub.innerText = "「花園裡準備了 4 個花盆 (4 組)。」"; await delay(2500); if(!this.isPlaying) return;
+                    sub.innerText = "「每個花盆都要放 3 顆種子，要一樣多喔！」"; for(let i=1; i<=4; i++) { await delay(800); if(!this.isPlaying) return; document.getElementById(`p${i}`).style.opacity = 1; }
+                    await delay(2000); if(!this.isPlaying) return; sub.innerText = "「4 組，每組 3 顆，一共有 12 顆！ (4 × 3 = 12)」";
+                } else if (island === "除法島") {
+                    stage.style.background = "#aed6f1";
+                    stage.innerHTML = `<div id="candies" style="font-size:2rem; text-align:center; margin-top:20px; height:40px; letter-spacing:2px;">🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬</div>
+                        <div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;">
+                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl1"></div>
+                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl2"></div>
+                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl3"></div>
+                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl4"></div></div>`;
+                    sub.innerText = "「桌上有 12 顆糖果，要平均分給 4 個盤子。」"; await delay(2500); if(!this.isPlaying) return;
+                    sub.innerText = "「一人一顆輪流分，直到全部分完為止！」"; 
+                    let remainCandies = 12; document.getElementById('candies').innerText = "";
+                    for(let round = 1; round <= 3; round++) {
+                        for(let i = 1; i <= 4; i++) { 
+                            await delay(300); if(!this.isPlaying) return; 
+                            document.getElementById(`pl${i}`).innerText += "🍬"; 
+                            remainCandies--; document.getElementById('candies').innerText = "🍬".repeat(remainCandies);
+                        }
+                    }
+                    await delay(1500); if(!this.isPlaying) return; sub.innerText = "「糖果分完了，每個盤子都是 3 顆！ (12 ÷ 4 = 3)」";
+                } else if (island === "四則運算島") {
+                    stage.style.background = "#2c3e50";
+                    stage.innerHTML = `<div style="background:#34495e;width:100%;height:80px;position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:5px;"><div style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;">18</div><div style="color:white;font-size:2rem;font-weight:bold;">＋</div><div id="tc2" style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">4</div><div id="tc-mul" style="color:white;font-size:2rem;font-weight:bold;">×</div><div id="tc3" style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">3</div></div>`;
+                    sub.innerText = "「神殿裡的運算，必須找出優先權！」"; await delay(2500); if(!this.isPlaying) return;
+                    sub.innerText = "「沒有括號時，掃描並優先處理乘法或除法。」"; await delay(1500); if(!this.isPlaying) return;
+                    document.getElementById('tc2').style.border = "4px dashed #e74c3c"; document.getElementById('tc3').style.border = "4px dashed #e74c3c";
+                    await delay(2000); if(!this.isPlaying) return; sub.innerText = "「先算 4 乘以 3，得到 12。最後再加 18！」"; document.getElementById('tc2').innerText = "12"; document.getElementById('tc2').style.border = "none"; document.getElementById('tc-mul').style.display = "none"; document.getElementById('tc3').style.display = "none";
+                }
+            }
+        };
+
+        function endAnimation() {
+            AnimationEngine.isPlaying = false;
+            document.getElementById('animation-view').style.display = 'none'; document.getElementById('interactive-view').style.display = 'flex';
+            GameFlowController.loadNextQuestion(); renderUI();
+        }
+
+        // 數學引擎
+        const MathEngineV2 = {
+            getRandomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+            generateQuestion: function(island, level) {
+                let q = { template_id: "", expression: "", correctAnswer: 0, params: {}, misconceptions: {} };
+                if (island === "加法島") {
+                    let a, b;
+                    if (level === 1) { a = this.getRandomInt(1, 8); b = this.getRandomInt(1, 9-a); } else if (level === 2) { a = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); b = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); } else { a = this.getRandomInt(15, 80); b = this.getRandomInt(1, 8)*10 + this.getRandomInt(10-(a%10), 9); if(a+b>99) b-=10; } 
+                    q.template_id = "ADD_BASIC"; q.params={a,b}; q.expression=`${a} + ${b}`; q.correctAnswer=a+b; q.misconceptions["ERR_ADD_CARRY_FORGOTTEN"] = (Math.floor(a/10)+Math.floor(b/10))*10 + ((a%10+b%10)%10);
+                } else if (island === "減法島") {
+                    let a, b;
+                    if (level === 1) { a = this.getRandomInt(2, 9); b = this.getRandomInt(1, a-1); } else if (level === 2) { a = this.getRandomInt(2, 5)*10 + this.getRandomInt(5, 9); b = this.getRandomInt(1, 2)*10 + this.getRandomInt(1, (a%10)-1); } else { a = this.getRandomInt(21, 98); b = this.getRandomInt(1, Math.floor(a/10)-1)*10 + this.getRandomInt((a%10)+1, 9); } 
+                    q.template_id = "SUB_BASIC"; q.params={a,b}; q.expression=`${a} - ${b}`; q.correctAnswer=a-b; q.misconceptions["ERR_SUB_REVERSE_DIGIT"] = (Math.floor(a/10)-Math.floor(b/10))*10 + Math.abs((b%10)-(a%10));
+                } else if (island === "乘法島") {
+                    let a, b;
+                    if (level === 1) { a = this.getRandomInt(2, 4); b = this.getRandomInt(2, 4); } else if (level === 2) { a = this.getRandomInt(3, 6); b = this.getRandomInt(3, 6); } else { a = this.getRandomInt(6, 9); b = this.getRandomInt(6, 9); }
+                    q.template_id = "MUL_BASIC"; q.params={a,b}; q.expression=`${a} × ${b}`; q.correctAnswer=a*b;
+                } else if (island === "除法島") {
+                    let b, ans, a; 
+                    if (level === 1) { b = this.getRandomInt(2, 4); ans = this.getRandomInt(2, 4); } else if (level === 2) { b = this.getRandomInt(3, 6); ans = this.getRandomInt(3, 7); } else { b = this.getRandomInt(6, 9); ans = this.getRandomInt(5, 9); }
+                    a = b * ans;
+                    q.template_id = "DIV_BASIC"; q.params={a,b}; q.expression=`${a} ÷ ${b}`; q.correctAnswer=ans;
+                } else {
+                    let t = (level <= 2) ? "LR_AS" : ["MD_FIRST", "PAREN_AS_SUB", "LR_MD"][this.getRandomInt(0, 2)];
+                    q.template_id = t;
+                    if(t === "LR_AS") { let a = this.getRandomInt(10, 30), b = this.getRandomInt(1, a), c = this.getRandomInt(1, 20); q.params={a,b,c}; q.expression=`${a} - ${b} + ${c}`; q.correctAnswer=a-b+c; q.misconceptions["ERR_LEFT_TO_RIGHT_AS"] = a-(b+c); } 
+                    else if (t === "MD_FIRST") { let b = this.getRandomInt(2, 9), c = this.getRandomInt(2, 9), a = this.getRandomInt(10, 50), d = this.getRandomInt(0, a+(b*c)); q.params={a,b,c,d}; q.expression=`${a} + ${b} × ${c} - ${d}`; q.correctAnswer=a+(b*c)-d; q.misconceptions["ERR_ORDER_ADD_FIRST"] = (a+b)*c-d; } 
+                    else if (t === "PAREN_AS_SUB") { let c = this.getRandomInt(2, 9), b = this.getRandomInt(10, 50), a = b + this.getRandomInt(2, 12); q.params={a,b,c}; q.expression=`( ${a} - ${b} ) × ${c}`; q.correctAnswer=(a-b)*c; q.misconceptions["ERR_PAREN_IGNORED"] = a-b*c; } 
+                    else if (t === "LR_MD") { let b2 = this.getRandomInt(2, 9), c2 = this.getRandomInt(2, 9), a2 = this.getRandomInt(2, 12)*b2; q.params={a:a2,b:b2,c:c2}; q.expression=`${a2} ÷ ${b2} × ${c2}`; q.correctAnswer=(a2/b2)*c2; q.misconceptions["ERR_LEFT_TO_RIGHT_MD"] = a2/(b2*c2); }
+                }
+                return q;
+            },
+            diagnoseError: function(q, sAns) {
+                let ans = parseFloat(sAns);
+                if (isNaN(ans)) return { isCorrect: false, errorCode: "ERR_INPUT_EMPTY", message: "請輸入答案喔！" };
+                if (ans === q.correctAnswer) return { isCorrect: true, errorCode: "CORRECT", message: "太棒了！計算完全正確！" };
+                for (const [code, val] of Object.entries(q.misconceptions)) {
+                    if (ans === val) {
+                        let msg = "⚠️ 觀念有點小錯誤喔！";
+                        if(code==="ERR_ADD_CARRY_FORGOTTEN") msg="⚠️ 個位滿十要向十位進 1！"; if(code==="ERR_SUB_REVERSE_DIGIT") msg="⚠️ 不夠減要借位，不能用下減上！";
+                        if(code==="ERR_ORDER_ADD_FIRST") msg="⚠️ 必須先乘除，後加減！"; if(code==="ERR_PAREN_IGNORED") msg="⚠️ 括號裡面要優先計算！";
+                        if(code.includes("ERR_LEFT_TO_RIGHT")) msg="⚠️ 同一層的運算，要由左至右算！";
+                        return { isCorrect: false, errorCode: code, message: msg };
+                    }
+                }
+                return { isCorrect: false, errorCode: "ERR_UNKNOWN", message: "🤔 系統猜不到你是怎麼算的...\n請仔細檢查一下再試試看喔！" };
+            }
+        };
+
+        const GameFlowController = {
+            state: { island: "", zone: "LEARNING", qIndex: 1, totalQ: 3, currentQ: null, attempts: 0, firstTryCorrects: 0, stars: 0 },
+            startIsland: function(island, startZone) { this.state.island = island; this.state.stars = 0; this.enterZone(startZone || "LEARNING"); },
+            enterZone: function(z) { this.state.zone = z; this.state.qIndex = 1; this.state.attempts = 0; this.state.firstTryCorrects = 0; this.state.totalQ = (z === "LEARNING") ? 3 : (z === "PRACTICE" ? 10 : 5); },
+            loadNextQuestion: function() { 
+                this.state.attempts = 0; 
+                let lv = 1; if(this.state.zone === "PRACTICE") lv = (this.state.qIndex <= 5) ? 2 : 3; else if(this.state.zone === "MASTERY") lv = 4;
+                this.state.currentQ = MathEngineV2.generateQuestion(this.state.island, lv); 
+            },
+            submitAnswer: function(ans) {
+                this.state.attempts++;
+                let diag = MathEngineV2.diagnoseError(this.state.currentQ, ans);
+                let res = { isCorrect: diag.isCorrect, msg: diag.message, hintLvl: 0, nextAct: "RETRY", errCode: diag.errorCode, earnedStars: 0 };
+                
+                if (diag.isCorrect) {
+                    if(this.state.attempts === 1) this.state.firstTryCorrects++; 
+                    if (this.state.qIndex < this.state.totalQ) { this.state.qIndex++; res.nextAct = "NEXT_Q"; } 
+                    else {
+                        let rate = this.state.firstTryCorrects / this.state.totalQ;
+                        let earned = 0;
+                        if(rate >= 0.9) earned = 3; else if(rate >= 0.8) earned = 2; else if(rate >= 0.7) earned = 1;
+                        this.state.stars += earned;
+                        res.earnedStars = earned; 
+                        
+                        let recordObj = { stars: earned, accuracy: Math.round(rate * 100), date: new Date().toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}) };
+                        if(!currentUser.progress[this.state.island]) currentUser.progress[this.state.island] = { LEARNING: [], PRACTICE: [], MASTERY: [] };
+                        currentUser.progress[this.state.island][this.state.zone].push(recordObj);
+                        
+                        res.nextAct = "FINISH"; 
+                        res.msg = `🎉 完成本區挑戰！\n答對率 ${Math.round(rate*100)}%，獲得 ${earned} 顆星！\n點擊下方按鈕儲存成績！`;
+                    }
+                } else {
+                    res.hintLvl = this.state.attempts >= 3 ? 3 : this.state.attempts;
+                    if(res.hintLvl === 2 && this.state.zone !== "MASTERY") res.msg += "\n💡 提示：請特別注意紅色閃爍的地方！";
+                }
+                return res;
+            }
+        };
+
+        const uiInput = document.getElementById('ui-input'), uiExpr = document.getElementById('ui-expression'), uiFeedback = document.getElementById('ui-feedback');
+        function typeNum(val) { if(val === 'C') uiInput.value = ""; else if(val === '<') uiInput.value = uiInput.value.slice(0, -1); else uiInput.value += val; }
+
+        function renderUI() {
+            let s = GameFlowController.state;
+            document.getElementById('ui-zone').innerText = `${s.zone === "LEARNING" ? "概念學習區" : (s.zone === "PRACTICE" ? "適性練習區" : "掌握確認區")} ( 第 ${s.qIndex} / ${s.totalQ} 題 )`;
+            document.getElementById('ui-island-stars').innerText = s.stars;
+            uiInput.value = ""; uiInput.disabled = false;
+            document.getElementById('btn-submit').style.display = 'block'; document.getElementById('btn-next').style.display = 'none'; document.getElementById('btn-finish').style.display = 'none';
+            uiExpr.innerHTML = s.currentQ.expression.split(" ").map((p, idx) => `<span id="expr-part-${idx}">${p}</span>`).join("");
+        }
+
+        function submitAns() {
+            if(uiInput.value === "") return;
+            let qStr = GameFlowController.state.currentQ.expression;
+            let res = GameFlowController.submitAnswer(uiInput.value);
+            
+            uiFeedback.innerText = res.msg; uiFeedback.className = "feedback " + (res.isCorrect ? "success" : "error");
+
+            if (!res.isCorrect && res.hintLvl >= 2) {
+                let qType = GameFlowController.state.currentQ.template_id;
+                if(qType.includes("BASIC")) document.getElementById('expr-part-1').classList.add('highlight-hint');
+                else if (qType === "MD_FIRST") [2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
+                else if (qType === "PAREN_AS_SUB") [0,1,2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
+                else if (qType === "LR_MD" || qType === "LR_AS") [0,1,2].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
+            }
+
+            if (res.isCorrect) {
+                if (res.earnedStars > 0 && currentUser) { currentUser.total_stars += res.earnedStars; }
+                if(currentUser) {
+                    let updateStars = (res.nextAct === "FINISH") ? currentUser.total_stars : undefined;
+                    let updateProg = (res.nextAct === "FINISH") ? currentUser.progress : undefined;
+                    apiCall({ action: 'submit_answer', username: currentUser.username, island: GameFlowController.state.island, question_text: qStr, student_answer: uiInput.value, is_correct: res.isCorrect, attempt_count: GameFlowController.state.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg, update_stars: updateStars, update_progress: updateProg });
+                }
+                uiInput.disabled = true; document.getElementById('btn-submit').style.display = 'none';
+                if (res.nextAct === "FINISH") document.getElementById('btn-finish').style.display = 'block';
+                else document.getElementById('btn-next').style.display = 'block';
+            } else {
+                if(currentUser) apiCall({ action: 'submit_answer', username: currentUser.username, island: GameFlowController.state.island, question_text: qStr, student_answer: uiInput.value, is_correct: false, attempt_count: GameFlowController.state.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg });
+            }
+        }
+
+        function nextQ() {
+            uiFeedback.className = "feedback info"; uiFeedback.innerText = "🤖 請算出黑板上的答案！"; uiInput.placeholder = "?";
+            GameFlowController.loadNextQuestion(); renderUI();
+        }
+    </script>
+</body>
+</html>
