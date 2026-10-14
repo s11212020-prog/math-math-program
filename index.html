@@ -3,13 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>四則運算冒險島 - 終極穩定版</title>
+    <title>四則運算冒險島 - 統一入口平台</title>
     <style>
+        /* 共用基礎與變數 */
         :root { --primary: #2c3e50; --accent: #3498db; --bg: #ecf0f1; --correct: #27ae60; --wrong: #e74c3c; }
         body { font-family: '微軟正黑體', sans-serif; background: var(--bg); margin: 0; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; box-sizing: border-box;}
         .screen.active { display: flex; }
         
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; display: none; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+
+        /* ================= 統一首頁：身分選擇 ================= */
+        .role-container { display: flex; gap: 30px; justify-content: center; margin-top: 40px; flex-wrap: wrap; }
+        .role-card { background: white; width: 250px; padding: 40px 20px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; border-bottom: 8px solid #ccc;}
+        .role-card:hover { transform: translateY(-10px); }
+        .role-card.student { border-color: #27ae60; }
+        .role-card.student h2 { color: #27ae60; }
+        .role-card.teacher { border-color: #2980b9; }
+        .role-card.teacher h2 { color: #2980b9; }
+        .role-icon { font-size: 5rem; margin-bottom: 20px; }
+
+        /* ================= 學生端：共用 UI ================= */
         .header { width: 100%; background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; position: absolute; top:0; z-index: 10;}
         .btn { padding: 15px 20px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 10px; color: white; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,0.2); user-select: none; transition: 0.2s;}
         .btn:active { transform: translateY(6px); box-shadow: none; }
@@ -22,17 +36,16 @@
         .island-card { background: white; padding: 20px; border-radius: 15px; width: 120px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 5px solid #ddd; font-size: 1.2rem; font-weight: bold;}
         .island-card:active { transform: scale(0.95); }
         
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .record-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 1.1rem; }
         .record-history { font-size: 0.85rem; color: #7f8c8d; text-align: right; margin-top: 5px;}
 
         .history-table-container { width: 95%; max-width: 800px; max-height: 70vh; overflow-y: auto; background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 60px;}
         .history-table { width: 100%; border-collapse: collapse; text-align: center; }
-        .history-table th { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; }
+        .history-table th { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; z-index: 2;}
         .history-table td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
-        .history-table tr:hover { background: #f9f9f9; }
-
+        
         .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; margin-top: 50px; width: 100%; box-sizing: border-box;}
         #animation-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 600px; }
         .theater { background: #a2d9ce; width: 100%; height: 250px; border-radius: 20px; position: relative; overflow: hidden; border: 5px solid var(--primary); box-shadow: 0 8px 0 rgba(44, 62, 80, 0.2); margin-bottom: 20px;}
@@ -56,26 +69,67 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 90%; max-width: 350px; }
         .btn-num { background: white; color: var(--primary); box-shadow: 0 6px 0 #bdc3c7; padding: 15px; font-size: 1.5rem; border-radius: 10px; border:none;}
         .btn-submit { grid-column: span 3; background: #f39c12; box-shadow: 0 6px 0 #d35400; color: white; padding: 15px; border:none; border-radius: 10px; font-size: 1.5rem; font-weight: bold;}
+
+        /* ================= 教師端：專屬 UI ================= */
+        #screen-admin-dashboard { overflow-y: auto; justify-content: flex-start; padding: 20px;}
+        .admin-container { max-width: 1100px; width: 100%; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box;}
+        .admin-header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;}
+        .admin-container h1, .admin-container h2 { color: #2c3e50; margin: 0; }
+        .admin-container h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 30px;}
+        .admin-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
+        .admin-table th, .admin-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        .admin-table th { background: #34495e; color: white; font-size: 1.1rem;}
+        .admin-table tr:hover { background: #f9f9f9; }
+        .btn-view { background: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+        .warning { color: #d32f2f; font-weight: bold; background: #ffebee; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;}
         
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; display: none; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .admin-modal-content { background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .admin-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px;}
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;}
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #eee;}
+        .stat-card .value { font-size: 2rem; font-weight: bold; color: #2980b9;}
+        .err-analysis { color: #e74c3c; font-weight: bold; font-size: 0.95rem; display: block; margin-top: 5px; padding: 5px; background: #fdedec; border-radius: 5px;}
     </style>
 </head>
 <body>
 
     <div id="loading">📡 資料同步中...</div>
 
-    <div id="screen-login" class="screen active">
-        <div class="login-box">
-            <h1>🌴 四則運算冒險島</h1>
-            <p>請輸入一個不會和別人重複的專屬代碼</p>
-            <input type="text" id="username" class="input-login" placeholder="例如: 3A01小明">
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button class="btn" style="background:#27ae60; width:50%;" onclick="doAuth('register')">🌟 註冊新帳號</button>
-                <button class="btn" style="background:#2980b9; width:50%;" onclick="doAuth('login')">🔙 舊玩家登入</button>
+    <!-- ================= 統一入口：身分選擇 ================= -->
+    <div id="screen-role-select" class="screen active">
+        <h1 style="color: var(--primary); font-size: 2.5rem; text-align: center;">🌴 四則運算冒險島</h1>
+        <p style="font-size: 1.2rem; color: #7f8c8d;">請選擇您的身分進入系統</p>
+        
+        <div class="role-container">
+            <div class="role-card student" onclick="switchScreen('screen-student-login')">
+                <div class="role-icon">🧑‍🎓</div>
+                <h2>我是學生</h2>
+                <p>開始探險與挑戰關卡</p>
+            </div>
+            
+            <div class="role-card teacher" onclick="switchScreen('screen-admin-login')">
+                <div class="role-icon">🧑‍🏫</div>
+                <h2>我是老師</h2>
+                <p>查看班級與學生分析</p>
             </div>
         </div>
     </div>
 
+    <!-- ================= 學生端：登入 ================= -->
+    <div id="screen-student-login" class="screen">
+        <div class="login-box">
+            <h1 style="color: #27ae60;">🧑‍🎓 學生登入</h1>
+            <p>請輸入不會和別人重複的專屬代碼</p>
+            <input type="text" id="student-username" class="input-login" placeholder="例如: 3A01小明">
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn" style="background:#27ae60; width:50%;" onclick="doStudentAuth('register')">🌟 註冊新帳號</button>
+                <button class="btn" style="background:#2980b9; width:50%;" onclick="doStudentAuth('login')">🔙 舊玩家登入</button>
+            </div>
+            <button class="btn" style="background:#95a5a6; width:100%; margin-top: 15px;" onclick="switchScreen('screen-role-select')">返回身分選擇</button>
+        </div>
+    </div>
+
+    <!-- 學生端：地圖 -->
     <div id="screen-map" class="screen">
         <div class="header">
             <div>
@@ -97,6 +151,7 @@
         </div>
     </div>
 
+    <!-- 學生端：學習歷程 -->
     <div id="screen-history" class="screen">
         <div class="header">
             <button onclick="switchScreen('screen-map')" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
@@ -111,6 +166,7 @@
         </div>
     </div>
 
+    <!-- 學生端：關卡紀錄 Modal -->
     <div id="modal-report" class="modal-overlay">
         <div class="modal-content">
             <h2 id="modal-title" style="color:var(--primary); margin-top:0;">島嶼挑戰紀錄</h2>
@@ -119,6 +175,7 @@
         </div>
     </div>
 
+    <!-- 學生端：遊戲區 -->
     <div id="screen-game" class="screen">
         <div class="header">
             <button onclick="backToMap()" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
@@ -154,22 +211,90 @@
         </div>
     </div>
 
+
+    <!-- ================= 教師端：登入 ================= -->
+    <div id="screen-admin-login" class="screen">
+        <div class="login-box">
+            <h1 style="color: #2980b9;">🧑‍🏫 教師戰情室</h1>
+            <p>請輸入管理員密碼以查看全班分析</p>
+            <input type="password" id="admin-pwd" class="input-login" placeholder="密碼 (預設 admin888)">
+            <br>
+            <button class="btn" style="background:#3498db; width:100%; margin-bottom: 10px;" onclick="doAdminAuth()">登入並載入資料</button>
+            <button class="btn" style="background:#95a5a6; width:100%;" onclick="switchScreen('screen-role-select')">返回身分選擇</button>
+            <p id="admin-error-msg" style="color: #e74c3c; font-weight: bold; margin-top: 15px;"></p>
+        </div>
+    </div>
+
+    <!-- 教師端：儀表板 -->
+    <div id="screen-admin-dashboard" class="screen">
+        <div class="admin-container">
+            <div class="admin-header-area">
+                <h1 id="dashboard-title">📊 班級學習分析儀表板</h1>
+                <button class="btn" style="background:#e74c3c;" onclick="location.reload()">登出系統</button>
+            </div>
+
+            <h2>⭐ 學生名單與學習概況</h2>
+            <table class="admin-table">
+                <thead><tr><th>學生帳號</th><th>暱稱</th><th>獲得總星數</th><th>最後登入時間</th><th>操作</th></tr></thead>
+                <tbody id="students-list"></tbody>
+            </table>
+            
+            <h2>⚠️ 需要輔導名單 (卡關警示)</h2>
+            <table class="admin-table">
+                <thead><tr><th>學生帳號</th><th>暱稱</th><th>卡關狀況</th></tr></thead>
+                <tbody id="warning-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 教師端：學生深度分析 Modal -->
+    <div id="admin-student-modal" class="modal-overlay">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h1 id="admin-modal-name" style="color:#2980b9; margin:0;">學生姓名</h1>
+                <button class="btn" style="background:#95a5a6; padding: 5px 15px;" onclick="closeAdminModal()">✖ 關閉</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">總作答題數<div class="value" id="admin-modal-total">0</div></div>
+                <div class="stat-card">整體答對率<div class="value" id="admin-modal-correct" style="color:#27ae60;">0%</div></div>
+                <div class="stat-card">整體答錯率<div class="value" id="admin-modal-wrong" style="color:#e74c3c;">0%</div></div>
+            </div>
+
+            <h2>🗺️ 各島嶼過關進度</h2>
+            <table class="admin-table" style="font-size: 0.95rem;">
+                <thead><tr><th>島嶼名稱</th><th>關卡區域</th><th>最佳答對率</th><th>獲得星數</th><th>過關時間</th></tr></thead>
+                <tbody id="admin-modal-prog"></tbody>
+            </table>
+
+            <h2>📖 錯題分析本 (觀念迷思診斷)</h2>
+            <table class="admin-table" style="font-size: 0.95rem;">
+                <thead><tr><th>島嶼</th><th>當時題目</th><th>填寫錯誤答案</th><th>系統迷思診斷</th></tr></thead>
+                <tbody id="admin-modal-wrong-list"></tbody>
+            </table>
+        </div>
+    </div>
+
     <script>
-        // 🚨 請換成您的 GAS 網址
+        // 🚨 這裡請貼上您的 GAS Web App URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxAQNfjduy7o0oYAGq_rDE3dpZfvEtz4TdHjNo_7q4XRHEDjO3yKlGlXuv_k__-iZsnmQ/exec"; 
         
+        // 全域變數
         let currentUser = null;
         let selectedIslandForModal = "";
+        let globalUsers = [];
+        let globalLogs = [];
+
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         async function apiCall(payload) {
             if(GAS_URL.includes("請換成")) return { status: 'offline' };
             try { 
-                const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }); 
+                const r = await fetch(GAS_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(payload) }); 
                 return await r.json(); 
             } catch(e){ 
-                console.error("API 連線失敗", e);
-                return { status: 'error', message: '無法連接到伺服器，請檢查網址或重新整理！' }; 
+                console.error(e);
+                return { status: 'error', message: '連線失敗，請檢查網址或網路！' }; 
             }
         }
 
@@ -178,19 +303,18 @@
             document.getElementById(id).classList.add('active');
         }
 
-        async function doAuth(actionType) {
-            const username = document.getElementById('username').value.trim();
+        // ==========================================
+        // 🧑‍🎓 學生端邏輯
+        // ==========================================
+        async function doStudentAuth(actionType) {
+            const username = document.getElementById('student-username').value.trim();
             if(!username) return alert("請輸入代碼！");
             
             document.getElementById('loading').style.display = 'flex';
             const res = await apiCall({ action: actionType, username: username });
             document.getElementById('loading').style.display = 'none';
             
-            // 🚨 強化防呆：連線失敗或找不到帳號的警告
-            if (res.status === 'error') { 
-                alert(res.message || "發生未知錯誤，請檢查伺服器連線。"); 
-                return; 
-            }
+            if (res.status === 'error') { alert(res.message); return; }
             
             if (res.status === 'offline') {
                 currentUser = { username: username, nickname: username, total_stars: 0, progress: {} };
@@ -213,7 +337,8 @@
                 const tbody = document.getElementById('history-tbody');
                 tbody.innerHTML = "";
                 let allRecords = [];
-                
+                if (!currentUser || !currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
+
                 for (const [islandName, zones] of Object.entries(currentUser.progress)) {
                     if (!zones || typeof zones !== 'object') continue;
                     for (const [zoneName, records] of Object.entries(zones)) {
@@ -226,11 +351,9 @@
                         });
                     }
                 }
-
                 allRecords.sort((a, b) => b.time - a.time);
-                if (allRecords.length === 0) {
-                    tbody.innerHTML = "<tr><td colspan='5' style='padding:20px; color:#7f8c8d;'>目前還沒有挑戰紀錄喔！趕快去探險吧！</td></tr>";
-                } else {
+                if (allRecords.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='padding:20px; color:#7f8c8d;'>目前還沒有挑戰紀錄喔！趕快去探險吧！</td></tr>"; } 
+                else {
                     allRecords.forEach(r => {
                         let starStr = r.stars > 0 ? "⭐".repeat(r.stars) : "完成";
                         tbody.innerHTML += `<tr><td style="color:#7f8c8d; font-size:0.9rem;">${r.dateStr}</td><td style="font-weight:bold; color:var(--primary);">${r.island}</td><td>${r.zone}</td><td style="color:var(--accent); font-weight:bold;">${r.acc}%</td><td style="color:#f39c12;">${starStr}</td></tr>`;
@@ -244,6 +367,7 @@
             try {
                 selectedIslandForModal = island;
                 document.getElementById('modal-title').innerText = `${island} 挑戰紀錄`;
+                if (!currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
                 let prog = currentUser.progress[island] || { "LEARNING": [], "PRACTICE": [], "MASTERY": [] };
                 
                 const getBestStars = (arr) => {
@@ -254,7 +378,6 @@
 
                 let bestLearn = getBestStars(prog["LEARNING"]);
                 let bestPrac = getBestStars(prog["PRACTICE"]);
-
                 let canPrac = bestLearn >= 2;
                 let canMast = bestPrac >= 2;
 
@@ -269,22 +392,18 @@
                 };
 
                 document.getElementById('modal-records').innerHTML = renderRow("概念學習區", prog["LEARNING"]) + renderRow("適性練習區", prog["PRACTICE"]) + renderRow("掌握確認區", prog["MASTERY"]);
-
                 document.getElementById('modal-actions').innerHTML = `
                     <button class="btn" style="background:#27ae60;" onclick="enterIslandFromModal('LEARNING')">▶️ 概念學習區 (含動畫)</button>
                     <button class="btn" style="background:${canPrac ? '#f39c12' : '#bdc3c7'};" ${canPrac ? '' : 'disabled'} onclick="enterIslandFromModal('PRACTICE')">${canPrac ? '🚀 適性練習區' : '🔒 需學習區達 2 星解鎖'}</button>
                     <button class="btn" style="background:${canMast ? '#e74c3c' : '#bdc3c7'};" ${canMast ? '' : 'disabled'} onclick="enterIslandFromModal('MASTERY')">${canMast ? '⚔️ 掌握確認區' : '🔒 需練習區達 2 星解鎖'}</button>
-                    <button class="btn" style="background:#95a5a6; margin-top:10px;" onclick="closeModal()">🔙 取消返回</button>
+                    <button class="btn" style="background:#95a5a6; margin-top:10px;" onclick="document.getElementById('modal-report').style.display = 'none';">🔙 取消返回</button>
                 `;
                 document.getElementById('modal-report').style.display = 'flex';
             } catch (err) { console.error(err); enterIslandFromModal('LEARNING'); }
         }
 
-        function closeModal() { document.getElementById('modal-report').style.display = 'none'; }
-        
-        // 🌟 修正：確保從按鈕進入練習區時一定會產生題目
         function enterIslandFromModal(targetZone) {
-            closeModal(); 
+            document.getElementById('modal-report').style.display = 'none';
             document.getElementById('ui-island-name').innerText = selectedIslandForModal;
             GameFlowController.startIsland(selectedIslandForModal, targetZone);
             switchScreen('screen-game'); 
@@ -295,7 +414,6 @@
                 AnimationEngine.isPlaying = false;
                 document.getElementById('animation-view').style.display = 'none';
                 document.getElementById('interactive-view').style.display = 'flex';
-                // 強制呼叫出題函數，避免白畫面
                 GameFlowController.loadNextQuestion();
                 renderUI();
             }
@@ -307,7 +425,9 @@
             switchScreen('screen-map');
         }
 
-        // 動畫引擎
+        // ==========================================
+        // 🎬 動畫引擎與數學大腦 (完整保留)
+        // ==========================================
         const AnimationEngine = {
             isPlaying: false,
             play: async function(island) {
@@ -333,20 +453,14 @@
                     await delay(2000); if(!this.isPlaying) return; sub.innerText = "「4 組，每組 3 顆，一共有 12 顆！ (4 × 3 = 12)」";
                 } else if (island === "除法島") {
                     stage.style.background = "#aed6f1";
-                    stage.innerHTML = `<div id="candies" style="font-size:2rem; text-align:center; margin-top:20px; height:40px; letter-spacing:2px;">🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬</div>
-                        <div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;">
-                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl1"></div>
-                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl2"></div>
-                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl3"></div>
-                        <div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl4"></div></div>`;
+                    stage.innerHTML = `<div id="candies" style="font-size:2rem; text-align:center; margin-top:20px; height:40px; letter-spacing:2px;">🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬</div><div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl1"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl2"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl3"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl4"></div></div>`;
                     sub.innerText = "「桌上有 12 顆糖果，要平均分給 4 個盤子。」"; await delay(2500); if(!this.isPlaying) return;
-                    sub.innerText = "「一人一顆輪流分，直到全部分完為止！」"; 
-                    let remainCandies = 12; document.getElementById('candies').innerText = "";
+                    sub.innerText = "「一人一顆輪流分，直到全部分完為止！」"; document.getElementById('candies').innerText = "";
+                    let remainCandies = 12;
                     for(let round = 1; round <= 3; round++) {
                         for(let i = 1; i <= 4; i++) { 
                             await delay(300); if(!this.isPlaying) return; 
-                            document.getElementById(`pl${i}`).innerText += "🍬"; 
-                            remainCandies--; document.getElementById('candies').innerText = "🍬".repeat(remainCandies);
+                            document.getElementById(`pl${i}`).innerText += "🍬"; remainCandies--; document.getElementById('candies').innerText = "🍬".repeat(remainCandies);
                         }
                     }
                     await delay(1500); if(!this.isPlaying) return; sub.innerText = "「糖果分完了，每個盤子都是 3 顆！ (12 ÷ 4 = 3)」";
@@ -367,28 +481,22 @@
             GameFlowController.loadNextQuestion(); renderUI();
         }
 
-        // 數學引擎
         const MathEngineV2 = {
             getRandomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
             generateQuestion: function(island, level) {
                 let q = { template_id: "", expression: "", correctAnswer: 0, params: {}, misconceptions: {} };
                 if (island === "加法島") {
-                    let a, b;
-                    if (level === 1) { a = this.getRandomInt(1, 8); b = this.getRandomInt(1, 9-a); } else if (level === 2) { a = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); b = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); } else { a = this.getRandomInt(15, 80); b = this.getRandomInt(1, 8)*10 + this.getRandomInt(10-(a%10), 9); if(a+b>99) b-=10; } 
+                    let a, b; if (level === 1) { a = this.getRandomInt(1, 8); b = this.getRandomInt(1, 9-a); } else if (level === 2) { a = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); b = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); } else { a = this.getRandomInt(15, 80); b = this.getRandomInt(1, 8)*10 + this.getRandomInt(10-(a%10), 9); if(a+b>99) b-=10; } 
                     q.template_id = "ADD_BASIC"; q.params={a,b}; q.expression=`${a} + ${b}`; q.correctAnswer=a+b; q.misconceptions["ERR_ADD_CARRY_FORGOTTEN"] = (Math.floor(a/10)+Math.floor(b/10))*10 + ((a%10+b%10)%10);
                 } else if (island === "減法島") {
-                    let a, b;
-                    if (level === 1) { a = this.getRandomInt(2, 9); b = this.getRandomInt(1, a-1); } else if (level === 2) { a = this.getRandomInt(2, 5)*10 + this.getRandomInt(5, 9); b = this.getRandomInt(1, 2)*10 + this.getRandomInt(1, (a%10)-1); } else { a = this.getRandomInt(21, 98); b = this.getRandomInt(1, Math.floor(a/10)-1)*10 + this.getRandomInt((a%10)+1, 9); } 
+                    let a, b; if (level === 1) { a = this.getRandomInt(2, 9); b = this.getRandomInt(1, a-1); } else if (level === 2) { a = this.getRandomInt(2, 5)*10 + this.getRandomInt(5, 9); b = this.getRandomInt(1, 2)*10 + this.getRandomInt(1, (a%10)-1); } else { a = this.getRandomInt(21, 98); b = this.getRandomInt(1, Math.floor(a/10)-1)*10 + this.getRandomInt((a%10)+1, 9); } 
                     q.template_id = "SUB_BASIC"; q.params={a,b}; q.expression=`${a} - ${b}`; q.correctAnswer=a-b; q.misconceptions["ERR_SUB_REVERSE_DIGIT"] = (Math.floor(a/10)-Math.floor(b/10))*10 + Math.abs((b%10)-(a%10));
                 } else if (island === "乘法島") {
-                    let a, b;
-                    if (level === 1) { a = this.getRandomInt(2, 4); b = this.getRandomInt(2, 4); } else if (level === 2) { a = this.getRandomInt(3, 6); b = this.getRandomInt(3, 6); } else { a = this.getRandomInt(6, 9); b = this.getRandomInt(6, 9); }
+                    let a, b; if (level === 1) { a = this.getRandomInt(2, 4); b = this.getRandomInt(2, 4); } else if (level === 2) { a = this.getRandomInt(3, 6); b = this.getRandomInt(3, 6); } else { a = this.getRandomInt(6, 9); b = this.getRandomInt(6, 9); }
                     q.template_id = "MUL_BASIC"; q.params={a,b}; q.expression=`${a} × ${b}`; q.correctAnswer=a*b;
                 } else if (island === "除法島") {
-                    let b, ans, a; 
-                    if (level === 1) { b = this.getRandomInt(2, 4); ans = this.getRandomInt(2, 4); } else if (level === 2) { b = this.getRandomInt(3, 6); ans = this.getRandomInt(3, 7); } else { b = this.getRandomInt(6, 9); ans = this.getRandomInt(5, 9); }
-                    a = b * ans;
-                    q.template_id = "DIV_BASIC"; q.params={a,b}; q.expression=`${a} ÷ ${b}`; q.correctAnswer=ans;
+                    let b, ans, a; if (level === 1) { b = this.getRandomInt(2, 4); ans = this.getRandomInt(2, 4); } else if (level === 2) { b = this.getRandomInt(3, 6); ans = this.getRandomInt(3, 7); } else { b = this.getRandomInt(6, 9); ans = this.getRandomInt(5, 9); }
+                    a = b * ans; q.template_id = "DIV_BASIC"; q.params={a,b}; q.expression=`${a} ÷ ${b}`; q.correctAnswer=ans;
                 } else {
                     let t = (level <= 2) ? "LR_AS" : ["MD_FIRST", "PAREN_AS_SUB", "LR_MD"][this.getRandomInt(0, 2)];
                     q.template_id = t;
@@ -412,7 +520,7 @@
                         return { isCorrect: false, errorCode: code, message: msg };
                     }
                 }
-                return { isCorrect: false, errorCode: "ERR_UNKNOWN", message: "🤔 系統猜不到你是怎麼算的...\n請仔細檢查一下再試試看喔！" };
+                return { isCorrect: false, errorCode: "ERR_UNKNOWN", message: "🤔 系統猜不到你是怎麼算的...\n請再仔細檢查一下再試試看喔！" };
             }
         };
 
@@ -501,6 +609,129 @@
             uiFeedback.className = "feedback info"; uiFeedback.innerText = "🤖 請算出黑板上的答案！"; uiInput.placeholder = "?";
             GameFlowController.loadNextQuestion(); renderUI();
         }
+
+        // ==========================================
+        // 🧑‍🏫 教師端邏輯
+        // ==========================================
+        async function doAdminAuth() {
+            const pwd = document.getElementById('admin-pwd').value;
+            if(!pwd) return;
+            
+            document.getElementById('admin-error-msg').innerText = "";
+            
+            if(GAS_URL.includes("請換成")) {
+                enableDemoMode("尚未設定後端網址");
+                return;
+            }
+
+            document.getElementById('loading').style.display = 'flex';
+            try {
+                const res = await apiCall({ action: 'get_admin_data', password: pwd });
+                document.getElementById('loading').style.display = 'none';
+
+                if (res.status === 'error') {
+                    document.getElementById('admin-error-msg').innerText = "⚠️ " + res.message;
+                    return;
+                }
+                globalUsers = res.users || []; globalLogs = res.logs || [];
+                renderAdminDashboard();
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('admin-error-msg').innerHTML = `連線失敗，請檢查網址或網路！<br><br><button onclick="enableDemoMode('網路連線失敗')" class="btn" style="background:#f39c12;">開啟畢展展示模式</button>`;
+            }
+        }
+
+        function enableDemoMode(reason) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-title').innerText = "📊 班級學習分析儀表板 (展示模式)";
+            globalUsers = [
+                { username: "S01", nickname: "王小明", total_stars: 12, last_updated: new Date().toISOString(), current_progress: JSON.stringify({"加法島":{"LEARNING":[{"stars":3,"accuracy":100,"date":"2026/10/25 10:00"}],"PRACTICE":[{"stars":2,"accuracy":80,"date":"2026/10/25 10:15"}]}}) },
+                { username: "S02", nickname: "李小華", total_stars: 5, last_updated: new Date().toISOString(), current_progress: JSON.stringify({}) }
+            ];
+            globalLogs = [
+                { username: "S02", hint_level: 3, is_correct: false, island: "四則運算島", question_text: "15 + 4 × 3", student_answer: "57", error_code: "ERR_ORDER_ADD_FIRST", error_diagnosis: "必須先乘除，後加減！" },
+                { username: "S02", hint_level: 2, is_correct: false, island: "加法島", question_text: "18 + 15", student_answer: "23", error_code: "ERR_ADD_CARRY_FORGOTTEN", error_diagnosis: "個位滿十要向十位進 1！" }
+            ];
+            renderAdminDashboard();
+        }
+
+        function renderAdminDashboard() {
+            switchScreen('screen-admin-dashboard');
+            const warningCounts = {};
+            globalLogs.forEach(log => { if (log.hint_level >= 2) warningCounts[log.username] = (warningCounts[log.username] || 0) + 1; });
+
+            const stuBody = document.getElementById('students-list');
+            const warnBody = document.getElementById('warning-list');
+            stuBody.innerHTML = ''; warnBody.innerHTML = '';
+
+            globalUsers.forEach(u => {
+                let dateStr = "尚未登入";
+                if (u.last_updated) { let d = new Date(u.last_updated); if (!isNaN(d.getTime())) dateStr = d.toLocaleString('zh-TW'); }
+                
+                stuBody.innerHTML += `<tr><td>${u.username}</td><td>${u.nickname}</td><td style="color:#f39c12; font-weight:bold;">⭐ ${u.total_stars || 0}</td><td>${dateStr}</td><td><button class="btn-view" onclick="openAdminModal('${u.username}')">🔍 查看分析</button></td></tr>`;
+                
+                if (warningCounts[u.username] && warningCounts[u.username] >= 3) {
+                    warnBody.innerHTML += `<tr><td>${u.username}</td><td>${u.nickname}</td><td><span class="warning">⚠️ 嚴重卡關 ${warningCounts[u.username]} 次</span></td></tr>`;
+                }
+            });
+            if (warnBody.innerHTML === '') warnBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#7f8c8d;">🎉 目前全班沒有嚴重卡關的學生！</td></tr>';
+        }
+
+        function openAdminModal(username) {
+            const user = globalUsers.find(u => u.username === username);
+            if(!user) return;
+            document.getElementById('admin-modal-name').innerText = `👤 ${user.nickname} (${user.username}) 的學習報告`;
+
+            const userLogs = globalLogs.filter(log => log.username === username);
+            const validLogs = userLogs.filter(log => log.error_code !== "ERR_INPUT_EMPTY"); 
+            let totalQ = validLogs.length;
+            let correctQ = validLogs.filter(log => log.is_correct).length;
+            document.getElementById('admin-modal-total').innerText = totalQ;
+            document.getElementById('admin-modal-correct').innerText = totalQ === 0 ? "0%" : Math.round((correctQ / totalQ) * 100) + "%";
+            document.getElementById('admin-modal-wrong').innerText = totalQ === 0 ? "0%" : Math.round(((totalQ - correctQ) / totalQ) * 100) + "%";
+
+            const progBody = document.getElementById('admin-modal-prog');
+            progBody.innerHTML = '';
+            let progressData = {};
+            try { progressData = typeof user.current_progress === 'string' ? JSON.parse(user.current_progress) : user.current_progress; } catch(e){}
+
+            if (Object.keys(progressData).length === 0 && userLogs.length > 0) {
+                progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#f39c12; font-weight:bold; padding:20px;">🌟 升級前的舊紀錄！已保留總星數。</td></tr>';
+            } else {
+                let hasProgress = false;
+                for (const [island, zones] of Object.entries(progressData)) {
+                    if (typeof zones !== 'object') continue;
+                    for (const [zone, records] of Object.entries(zones)) {
+                        if (Array.isArray(records) && records.length > 0) {
+                            hasProgress = true;
+                            let zoneZh = zone === "LEARNING" ? "概念學習區" : (zone === "PRACTICE" ? "適性練習區" : "掌握確認區");
+                            let bestRecord = records.reduce((best, current) => { let bStar = typeof best === 'object' ? (best.stars || 0) : (typeof best === 'number' ? best : 0); let cStar = typeof current === 'object' ? (current.stars || 0) : (typeof current === 'number' ? current : 0); return cStar > bStar ? current : best; }, records[0]);
+                            let acc = typeof bestRecord === 'object' && bestRecord.accuracy ? bestRecord.accuracy : "--";
+                            let stars = typeof bestRecord === 'object' && bestRecord.stars ? bestRecord.stars : (typeof bestRecord === 'number' ? bestRecord : 0);
+                            let date = typeof bestRecord === 'object' && bestRecord.date ? bestRecord.date : "舊版紀錄";
+                            progBody.innerHTML += `<tr><td>${island}</td><td>${zoneZh}</td><td>${acc === "--" ? acc : acc+"%"}</td><td style="color:#f39c12;">${stars > 0 ? "⭐".repeat(stars) : "完成"}</td><td>${date}</td></tr>`;
+                        }
+                    }
+                }
+                if(!hasProgress) progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6;">尚無過關紀錄</td></tr>';
+            }
+
+            const wrongBody = document.getElementById('admin-modal-wrong-list');
+            wrongBody.innerHTML = '';
+            const wrongLogs = validLogs.filter(log => !log.is_correct).reverse(); 
+            if(wrongLogs.length === 0) {
+                wrongBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#27ae60; font-weight:bold;">沒有錯題紀錄！</td></tr>';
+            } else {
+                wrongLogs.slice(0, 20).forEach(log => {
+                    let analysis = (log.error_diagnosis || "單純計算失誤").replace("⚠️ ", "");
+                    wrongBody.innerHTML += `<tr><td>${log.island || '未知'}</td><td style="font-size:1.2rem; font-weight:bold; letter-spacing:2px;">${log.question_text || '?'}</td><td style="color:#e74c3c; font-weight:bold; font-size:1.2rem;">${log.student_answer}</td><td><span style="font-size:0.8rem; color:#7f8c8d;">系統判定：${log.error_code}</span><div class="err-analysis">💡 ${analysis}</div></td></tr>`;
+                });
+            }
+            document.getElementById('admin-student-modal').style.display = 'flex';
+        }
+
+        function closeAdminModal() { document.getElementById('admin-student-modal').style.display = 'none'; }
     </script>
 </body>
 </html>
