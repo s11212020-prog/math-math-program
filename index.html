@@ -3,389 +3,665 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>四則運算冒險島 - 統一入口平台</title>
+    <title>數學彩虹群島：點亮星光燈塔</title>
     <style>
-        /* 共用基礎與變數 */
-        :root { --primary: #2c3e50; --accent: #3498db; --bg: #ecf0f1; --correct: #27ae60; --wrong: #e74c3c; }
-        body { font-family: '微軟正黑體', sans-serif; background: var(--bg); margin: 0; color: #333; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; box-sizing: border-box;}
-        .screen.active { display: flex; }
-        
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 999; display: none; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        /* ==========================================================================
+           一、全站色彩變數系統 & 基礎設定 (包含 FIX PATCH v1)
+           ========================================================================== */
+        :root {
+            --primary: #3498DB; --accent: #F5A65B;
+            --ocean-light: #BDEBFF; --ocean-mid: #79D2F2; --ocean-dark: #4EAED1;
+            --cream: #FFF8E8; --paper-yellow: #FFF2B8;
+            --text-main: #24435B; --text-sub: #526B7A;
+            --success-green: #4CAF79; --warning-orange: #F5A65B; --error-coral: #EE7B67; --star-gold: #FFD45A;
 
-        /* ================= 統一首頁：身分選擇 ================= */
-        .role-container { display: flex; gap: 30px; justify-content: center; margin-top: 40px; flex-wrap: wrap; }
+            /* 新增變數防呆 */
+            --white-panel: #FFFFFF; --bg-paper: #FFF8E8;
+
+            /* 動態島嶼變數 (預設) */
+            --theme-main: var(--ocean-dark); --theme-light: var(--ocean-light); --theme-accent: var(--accent);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        
+        /* 修復手機瀏覽器 100vh 問題 */
+        body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; background: var(--ocean-light); margin: 0; color: var(--text-main); height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; box-sizing: border-box; position: relative; z-index: 10;}
+        .screen.active { display: flex; }
+        #loading { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 9999; display: none; justify-content: center; align-items: center; font-size: 1.5rem; font-weight: bold; color: var(--text-main); }
+
+        /* ==========================================================================
+           二、背景與動畫
+           ========================================================================== */
+        .ocean-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; background: linear-gradient(180deg, var(--ocean-light) 0%, var(--ocean-dark) 100%); transition: background 0.8s ease;}
+        .bg-far { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 40%, var(--ocean-light) 100%); overflow: hidden;}
+        .bg-far .mountains { position: absolute; bottom: 30%; width: 100%; height: 20%; background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 20" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M0,20 L0,10 L10,5 L20,15 L35,0 L50,12 L65,2 L80,15 L90,8 L100,18 L100,20 Z" fill="%23C2B4E3" opacity="0.4"/></svg>') no-repeat bottom; background-size: cover;}
+        
+        .clouds-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; z-index: 1; }
+        .cloud { position: absolute; background: white; border-radius: 50px; opacity: 0.8; animation: cloudMove linear infinite; }
+        .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+        .cloud1 { width: 120px; height: 35px; top: 8%; left: -150px; animation-duration: 28s; } .cloud1::before { width: 60px; height: 60px; top: -30px; left: 15px; }
+        .cloud2 { width: 160px; height: 45px; top: 20%; left: -200px; animation-duration: 40s; animation-delay: 5s; opacity: 0.6;} .cloud2::before { width: 75px; height: 75px; top: -35px; left: 20px; }
+
+        .bg-near { position: absolute; bottom: 0; width: 100%; height: 15%; z-index: 5; pointer-events: none; }
+        .waves { width: 100%; height: 100%; background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 20" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><path d="M0,10 Q10,0 20,10 T40,10 T60,10 T80,10 T100,10 L100,20 L0,20 Z" fill="%234EAED1" opacity="0.6"/></svg>') repeat-x bottom; background-size: 200px 100%; animation: waveMove 6s linear infinite;}
+
+        #star-animation-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9000; }
+
+        @keyframes cloudMove { from { transform: translateX(-150px); } to { transform: translateX(120vw); } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+        @keyframes cardFadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes waveMove { from { background-position-x: 0; } to { background-position-x: -200px; } }
+        @keyframes starFly { 0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1.5) rotate(180deg); opacity: 1; } 70% { transform: translate(-50%, -50%) scale(1.2) rotate(180deg); opacity: 1; } 100% { transform: translate(-40vw, -45vh) scale(0.2) rotate(360deg); opacity: 0; } }
+        @keyframes nextButtonPop { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        
+        .apply-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: var(--error-coral) !important; color: var(--error-coral) !important; }
+        .flying-star { position: fixed; top: 50%; left: 50%; font-size: 5rem; z-index: 1000; pointer-events: none; opacity: 0; text-shadow: 0 0 20px rgba(255, 212, 90, 0.8); }
+
+        /* 🌟 六島主題變數 (掛載在 screen-game) */
+        #screen-game.theme-addition { --theme-main:#50C878; --theme-light:#A7E8BD; --theme-accent:#62CFE3; }
+        #screen-game.theme-subtraction { --theme-main:#FF9B71; --theme-light:#FFD0B5; --theme-accent:#FFD166; }
+        #screen-game.theme-multiplication { --theme-main:#F4C95D; --theme-light:#FFF0A8; --theme-accent:#8CCB75; }
+        #screen-game.theme-division { --theme-main:#F58FBA; --theme-light:#FFD1E3; --theme-accent:#A98DE0; }
+        #screen-game.theme-application { --theme-main:#45B8AC; --theme-light:#B9EEE8; --theme-accent:#F6A65D; }
+        #screen-game.theme-order { --theme-main:#6C63B5; --theme-light:#C8C3F0; --theme-accent:#F6C85F; }
+
+        /* 當進入遊戲時，改變 ocean-bg 漸層 */
+        #screen-game .ocean-bg { background: linear-gradient(160deg, var(--theme-light), var(--bg-paper), var(--theme-main)); opacity: 0.8;}
+
+        /* ==========================================================================
+           三、共用元件：按鈕與頂部狀態列
+           ========================================================================== */
+        .btn-game { padding: 14px 28px; font-size: 1.25rem; font-weight: 800; border: none; border-radius: 999px; cursor: pointer; color: white; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; position: relative; overflow: hidden; text-align: center; border: 3px solid rgba(255,255,255,0.5); z-index: 10;}
+        .btn-game:active:not(:disabled) { transform: translateY(6px); box-shadow: none !important; }
+        .btn-game:disabled { background: #BDC3C7 !important; border-color: #95A5A6; color: #7F8C8D; cursor: not-allowed; box-shadow: none !important; transform: none !important; }
+        
+        .btn-primary { background: var(--success-green); box-shadow: 0 7px 0 #3b8b5e; }
+        .btn-secondary { background: #95a5a6; box-shadow: 0 7px 0 #7f8c8d; }
+        .btn-danger { background: var(--error-coral); box-shadow: 0 7px 0 #c0392b; }
+        .btn-action { background: linear-gradient(135deg, var(--theme-main), var(--theme-accent)); box-shadow: 0 7px 0 rgba(0,0,0,0.2); }
+        
+        .btn-next-pop { display: none; width: min(100%, 420px); margin: 18px auto 0; padding: 16px 24px; color: #FFFFFF; font-size: 1.35rem; font-weight: 800; background: linear-gradient(135deg, #45B8AC, #4CAFE8); border: 3px solid rgba(255,255,255,.8); border-radius: 999px; box-shadow: 0 7px 0 #328D83; cursor: pointer; z-index: 10; text-align: center;}
+        .btn-next-pop:active { transform: translateY(7px); box-shadow: none; }
+        .btn-next-pop.is-visible { display: block; animation: nextButtonPop .35s ease-out; }
+
+        /* 🌟 頂部狀態列修復 */
+        .top-status-bar { width: 100%; background: transparent; padding: 15px 20px; display: flex; justify-content: space-between; align-items: flex-start; position: absolute; top: 0; z-index: 50; flex-wrap: wrap; gap: 8px; left: 0;}
+        .top-status-bar button, .top-status-bar .btn-game { pointer-events: auto; }
+        .status-pill { background: rgba(255,255,255,0.95); backdrop-filter: blur(5px); padding: 8px 15px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid white; display: flex; align-items: center; gap: 10px; pointer-events: auto; font-weight: bold;}
+
+        /* 首頁登入 */
+        .role-container { display: flex; gap: 30px; justify-content: center; margin-top: 20px; flex-wrap: wrap; z-index: 10; position: relative;}
         .role-card { background: white; width: 250px; padding: 40px 20px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s; border-bottom: 8px solid #ccc;}
         .role-card:hover { transform: translateY(-10px); }
-        .role-card.student { border-color: #27ae60; }
-        .role-card.student h2 { color: #27ae60; }
-        .role-card.teacher { border-color: #2980b9; }
-        .role-card.teacher h2 { color: #2980b9; }
+        .role-card.student { border-color: var(--success-green); } .role-card.student h2 { color: var(--success-green); }
+        .role-card.teacher { border-color: var(--primary); } .role-card.teacher h2 { color: var(--primary); }
         .role-icon { font-size: 5rem; margin-bottom: 20px; }
+        .login-box { background: var(--white-panel); padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px; z-index: 10; position: relative;}
+        .input-login { font-size: 1.5rem; padding: 12px; border: 3px solid var(--ocean-light); border-radius: 12px; margin: 20px 0; text-align: center; width: 100%; box-sizing: border-box; outline: none; color: var(--text-main); font-weight: bold;}
+        .input-login:focus { border-color: var(--primary); }
 
-        /* ================= 學生端：共用 UI ================= */
-        .header { width: 100%; background: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); box-sizing: border-box; position: absolute; top:0; z-index: 10;}
-        .btn { padding: 15px 20px; font-size: 1.2rem; font-weight: bold; border: none; border-radius: 10px; color: white; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,0.2); user-select: none; transition: 0.2s;}
-        .btn:active { transform: translateY(6px); box-shadow: none; }
-        .btn:disabled { background: #bdc3c7 !important; cursor: not-allowed; box-shadow: none; transform: none; }
+        /* ==========================================================================
+           四、地圖區 (🌟 CSS Grid 全新版面佈局)
+           ========================================================================== */
+        #screen-map { overflow-y: auto; overflow-x: hidden; justify-content: flex-start; }
+        #screen-map .bg-far, #screen-map .bg-near, #screen-map .top-status-bar { position: fixed; }
         
-        .login-box { background: white; padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px;}
-        .input-login { font-size: 1.5rem; padding: 10px; border: 2px solid #ccc; border-radius: 10px; margin: 20px 0; text-align: center; width: 80%; }
+        .map-canvas {
+            display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-areas: "add ord sub" "mul wp div" ". port .";
+            gap: 26px 16px; align-items: start; justify-items: center;
+            height: auto; margin: 84px auto 0; padding: 0 16px 48px; flex-shrink: 0; width: 100%; max-width: 1000px; z-index: 10;
+        }
         
-        .map-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px; margin-top: 60px; }
-        .island-card { background: white; padding: 20px; border-radius: 15px; width: 120px; height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 5px solid #ddd; font-size: 1.2rem; font-weight: bold;}
-        .island-card:active { transform: scale(0.95); }
+        .map-path-bg { position: absolute; top: 50%; left: 10%; width: 80%; height: 40%; background-image: radial-gradient(circle, white 4px, transparent 4px); background-size: 30px 30px; background-position: center; opacity: 0.4; z-index: -1; pointer-events: none; }
         
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box;}
-        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .record-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 1.1rem; }
-        .record-history { font-size: 0.85rem; color: #7f8c8d; text-align: right; margin-top: 5px;}
+        .island-node { position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; background: transparent; border: none; outline: none; padding: 0;}
+        .island-node:hover { transform: scale(1.08) translateY(-5px); }
+        .island-node:active { transform: scale(0.95); }
+        .island-art { width: 110px; height: 90px; position: relative; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.15), 0 15px 0 rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; font-size: 3rem; animation: float 5s ease-in-out infinite; border: 4px solid rgba(255,255,255,0.3);}
+        .island-label { margin-top: 15px; background: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; font-size: 0.9rem; color: var(--text-main); box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 2px solid #EEE;}
+        
+        /* Grid 定位 */
+        #node-add { grid-area: add; justify-self: start; margin-top: 28px; }
+        #node-ord { grid-area: ord; }
+        #node-sub { grid-area: sub; justify-self: end; margin-top: 20px; }
+        #node-mul { grid-area: mul; justify-self: start; }
+        #node-wp  { grid-area: wp;  margin-top: 14px; }
+        #node-div { grid-area: div; justify-self: end; }
+        
+        /* 各島顏色 */
+        #node-add .island-art { background: #50C878; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #3CA05E; border-radius: 50% 40% 60% 40% / 60% 50% 40% 50%; }
+        #node-sub .island-art { background: #FF9B71; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #D87A54; border-radius: 40% 50% 40% 60% / 50% 40% 60% 40%; }
+        #node-mul .island-art { background: #F4C95D; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #CFA441; border-radius: 60% 40% 50% 50% / 40% 60% 50% 40%; }
+        #node-div .island-art { background: #F58FBA; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #C96B93; border-radius: 50% 60% 40% 50% / 50% 40% 60% 50%; }
+        #node-wp .island-art  { background: #45B8AC; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #328D83; border-radius: 45% 55% 45% 55% / 55% 45% 55% 45%; }
+        #node-ord .island-art { background: #6C63B5; box-shadow: inset -10px -15px 20px rgba(0,0,0,0.1), 0 15px 0 #4E478C; border-radius: 40% 60% 50% 40% / 50% 40% 60% 50%; }
 
-        .history-table-container { width: 95%; max-width: 800px; max-height: 70vh; overflow-y: auto; background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 60px;}
-        .history-table { width: 100%; border-collapse: collapse; text-align: center; }
-        .history-table th { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; z-index: 2;}
-        .history-table td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
+        .island-node.star-0 .island-art { filter: grayscale(50%) opacity(0.8); } .island-node.star-0 .island-label { color: var(--text-sub); }
+        .island-node.star-1 .island-art { filter: none; }
+        .island-node.star-2 .island-art::after { content: '✨'; position: absolute; top: -15px; right: -10px; font-size: 1.5rem; animation: pulse 1s infinite; }
+        .island-node.star-3 .island-art { box-shadow: 0 0 25px var(--star-gold), inset -10px -15px 20px rgba(0,0,0,0.15), 0 15px 0 rgba(0,0,0,0.1); border-color: var(--star-gold); }
+
+        .starlight-port { grid-area: port; position: relative; bottom: auto; left: auto; transform: none; margin-top: 8px; display: flex; flex-direction: column; align-items: center; z-index: 10; cursor: pointer; border: none; background: transparent; outline: none;}
+        .starlight-port:active { transform: scale(0.95); }
+        .port-cabin { width: 140px; height: 100px; background: #E67E22; border-radius: 20px 20px 5px 5px; position: relative; box-shadow: 0 10px 0 #D35400; display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px;}
+        .port-cabin::before { content: '🏠'; font-size: 3.5rem; }
+        .port-dock { width: 180px; height: 20px; background: #8E44AD; border-radius: 10px; margin-top: 10px; box-shadow: 0 5px 0 #71368A; }
+
+        .explorer-boat { position: absolute; top: 0; left: 0; font-size: 2.4rem; opacity: 0; pointer-events: none; z-index: 12; transition: transform .6s ease, opacity .3s; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.2)); }
+
+        /* ==========================================================================
+           五、島內遊戲區與彈窗
+           ========================================================================== */
+        .game-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 70px 10px 10px 10px; width: 100%; box-sizing: border-box; overflow-y: auto; z-index: 10; position: relative;}
         
-        .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px; margin-top: 50px; width: 100%; box-sizing: border-box;}
-        #animation-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 600px; }
-        .theater { background: #a2d9ce; width: 100%; height: 250px; border-radius: 20px; position: relative; overflow: hidden; border: 5px solid var(--primary); box-shadow: 0 8px 0 rgba(44, 62, 80, 0.2); margin-bottom: 20px;}
-        .subtitle { min-height: 60px; font-size: 1.3rem; font-weight: bold; color: var(--primary); text-align: center; background: white; padding: 10px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; margin-bottom: 15px;}
+        .progress-path { display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 15px; width:100%; z-index: 2;}
+        .progress-node { width: 22px; height: 22px; border-radius: 50%; background: #e0e0e0; display: flex; justify-content: center; align-items: center; font-size: 0.7rem; font-weight: bold; color: white; transition: 0.3s; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .progress-node.completed { background: var(--success-green); box-shadow: 0 0 8px var(--success-green); font-size: 0; } .progress-node.completed::after { content:'✔'; font-size:0.8rem; }
+        .progress-node.active { background: var(--theme-main); transform: scale(1.3); border-color: var(--star-gold); z-index: 2;}
+        .progress-line { height: 4px; width: 15px; background: #e0e0e0; border-radius: 2px; transition: 0.3s;}
+        .progress-line.completed { background: var(--success-green); }
+
+        .story-panel { background: var(--cream); border-radius: 25px; padding: 35px 20px 20px 20px; width: 90%; max-width: 550px; text-align: center; margin-bottom: 15px; position: relative; box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 0 6px white; animation: cardFadeIn 0.5s ease-out; z-index: 2;}
+        .tape-decoration { position: absolute; top: 0; left: 0; width: 100%; height: 18px; background: var(--theme-main); border-radius: 25px 25px 0 0; opacity: 0.8;}
+        .badge-pill { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); background: var(--theme-main); color: white; padding: 6px 20px; border-radius: 20px; font-size: 1.1rem; font-weight: bold; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 3;}
+        
+        .expression-display { font-size: 2.8rem; font-weight: bold; color: var(--text-main); margin: 15px 0; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; text-shadow: 1px 1px 0px rgba(0,0,0,0.05); }
+        .expression-display span { padding: 4px 10px; border-radius: 12px; transition: 0.3s; background: white; box-shadow: 0 3px 5px rgba(0,0,0,0.05);}
+        .word-problem-text { font-size: 1.5rem !important; line-height: 1.7 !important; text-align: left !important; font-weight: bold; color: var(--text-main); letter-spacing: normal !important; display: block !important; padding: 15px !important;}
+        .highlight-hint { border: 4px dashed var(--error-coral); background: #fdedec; border-radius: 5px; padding: 2px 5px; animation: pulse 1s infinite;}
+        
+        .input-wrapper { display: flex; align-items: center; justify-content: center; gap: 15px; margin-top: 15px;}
+        /* 修正：輸入框寬度調整 */
+        .answer-box { font-size: 2.5rem; width: 130px; text-align: center; border: 4px solid var(--theme-main); border-radius: 15px; padding: 8px; color: var(--text-main); font-weight: bold; background: white; box-shadow: inset 0 4px 6px rgba(0,0,0,0.05); outline: none; transition: 0.2s;}
+        .answer-box:focus { border-color: var(--warning-orange); box-shadow: inset 0 4px 6px rgba(0,0,0,0.1), 0 0 15px rgba(245, 166, 91, 0.4);}
+        
+        /* 吉祥物與對話框 */
+        .mascot-wrapper { display: flex; flex-direction: column; align-items: flex-end; width: 90%; max-width: 500px; z-index: 2; position: relative;}
+        .feedback-bubble { min-height: 50px; width: 100%; padding: 15px 20px; border-radius: 20px; font-size: 1.15rem; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; white-space: pre-wrap; margin-bottom: 20px; position: relative; line-height: 1.5; box-shadow: 0 8px 20px rgba(0,0,0,0.08); transition: 0.3s; box-sizing: border-box;}
+        .feedback-bubble::after { content: ''; position: absolute; bottom: -10px; right: 40px; border-width: 10px 10px 0; border-style: solid; border-color: inherit; display: block; width: 0; }
+        .feedback-bubble.error { background: #fdedec; color: #c0392b; border-color: #fdedec; }
+        .feedback-bubble.success { background: #e9f7ef; color: #27ae60; border-color: #e9f7ef; }
+        .feedback-bubble.info { background: white; color: var(--text-main); border-color: white; }
+        .mascot-light { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; right: 20px; top: -10px;}
+        .mascot-body { width: 50px; height: 50px; background: var(--star-gold); clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); display: flex; align-items: center; justify-content: center; animation: float 3s ease-in-out infinite; box-shadow: 0 0 15px rgba(255, 212, 90, 0.5);}
+        .mascot-compass { width: 15px; height: 15px; background: white; border-radius: 50%; border: 3px solid var(--ocean-dark); position: relative; display: flex; justify-content: center;}
+        .mascot-compass::after { content:''; width: 0; height: 0; border-left: 3px solid transparent; border-right: 3px solid transparent; border-bottom: 8px solid var(--error-coral); position: absolute; top: 1px;}
+
+        /* 數字鍵盤 (糖果交錯色) */
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 90%; max-width: 380px; padding-bottom: 20px; z-index: 2;}
+        .btn-num { color: var(--text-main); box-shadow: 0 6px 0 rgba(0,0,0,0.1); padding: 18px; font-size: 1.8rem; font-weight: bold; border-radius: 15px; border:none; cursor: pointer; transition: 0.1s;}
+        .btn-num:active { transform: translateY(6px); box-shadow: 0 0 0 rgba(0,0,0,0.1); }
+        .btn-num:nth-child(4n+1) { background: #E7F7FF; } .btn-num:nth-child(4n+2) { background: #FFF2C7; } .btn-num:nth-child(4n+3) { background: #F1E9FF; } .btn-num:nth-child(4n) { background: #E4F7EB; }
+        .btn-action-clear { background: var(--error-coral) !important; color: white; box-shadow: 0 6px 0 #c0392b; }
+        .btn-action-back { background: var(--warning-orange) !important; color: white; box-shadow: 0 6px 0 #d35400; }
+
+        /* 應用題面板 */
+        .wp-action-panel { width: 90%; max-width: 550px; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; border: 4px solid var(--theme-light); margin-bottom: 20px; z-index: 2;}
+        .op-title { font-size: 1.3rem; font-weight: bold; color: var(--text-sub); margin-bottom: 15px; text-align: left;}
+        .op-buttons { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap;}
+        .btn-op { flex: 1; padding: 15px; font-size: 1.4rem; font-weight: bold; border: 3px solid #e0e0e0; background: white; color: var(--text-sub); border-radius: 12px; cursor: pointer; transition: 0.2s; min-width: 70px;}
+        .btn-op:hover { border-color: var(--theme-main); }
+        .btn-op.selected { border-color: var(--theme-accent); background: var(--theme-light); color: var(--text-main); transform: scale(1.05); box-shadow: 0 6px 15px rgba(0,0,0,0.1);}
+        .btn-read-aloud { position: absolute; top: 15px; right: 15px; background: #f1c40f; color: #8e44ad; border: none; padding: 8px 12px; border-radius: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 0 #d4ac0d; transition: 0.2s; z-index: 5;}
+        .btn-read-aloud:active { transform: translateY(3px); box-shadow: none; }
+
+        /* 動畫劇場 */
+        #animation-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 600px; z-index: 2;}
+        .theater { background: var(--theme-light); width: 100%; height: 220px; border-radius: 20px; position: relative; overflow: hidden; border: 5px solid var(--theme-main); box-shadow: 0 8px 0 rgba(0,0,0, 0.1); margin-bottom: 20px;}
+        .theater-subtitle { min-height: 60px; font-size: 1.3rem; font-weight: bold; color: var(--text-main); text-align: center; background: white; padding: 10px 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 90%; margin-bottom: 15px;}
         .prop { position: absolute; transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); opacity: 0; font-size: 2.5rem; }
-        
-        #interactive-view { display: none; flex-direction: column; align-items: center; width: 100%; }
-        .blackboard { background: #fff; border: 4px solid var(--primary); border-radius: 15px; padding: 20px; width: 90%; max-width: 500px; text-align: center; box-shadow: 0 8px 0 rgba(44, 62, 80, 0.2); margin-bottom: 15px; }
-        .zone-badge { background: var(--accent); color: white; padding: 5px 15px; border-radius: 20px; font-size: 1rem; margin-bottom: 15px; display: inline-block; }
-        .expression-display { font-size: 2.5rem; font-weight: bold; letter-spacing: 5px; color: #34495e; margin: 10px 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
-        .expression-display span { padding: 5px 10px; border-radius: 10px; }
-        .highlight-hint { border: 4px dashed var(--wrong); background: #fadbd8; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-        
-        .answer-box { font-size: 2rem; width: 100px; text-align: center; border: 3px solid #bdc3c7; border-radius: 10px; padding: 5px; color: var(--primary); font-weight: bold; margin-top: 10px;}
-        .feedback { min-height: 60px; width: 90%; max-width: 500px; padding: 10px; border-radius: 10px; font-size: 1.1rem; font-weight: bold; text-align: center; display: flex; align-items: center; justify-content: center; white-space: pre-wrap; margin-bottom: 15px; }
-        .feedback.error { background: #fdedec; color: #c0392b; border-left: 8px solid #c0392b; }
-        .feedback.success { background: #e9f7ef; color: #27ae60; border-left: 8px solid #27ae60; }
-        .feedback.info { background: #ebf5fb; color: #2980b9; border-left: 8px solid #2980b9; }
-        
-        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 90%; max-width: 350px; }
-        .btn-num { background: white; color: var(--primary); box-shadow: 0 6px 0 #bdc3c7; padding: 15px; font-size: 1.5rem; border-radius: 10px; border:none;}
-        .btn-submit { grid-column: span 3; background: #f39c12; box-shadow: 0 6px 0 #d35400; color: white; padding: 15px; border:none; border-radius: 10px; font-size: 1.5rem; font-weight: bold;}
 
-        /* ================= 教師端：專屬 UI ================= */
+        #interactive-view, #word-problem-view { display: none; flex-direction: column; align-items: center; width: 100%; z-index: 2; }
+
+        /* ==========================================================================
+           彈出視窗與教師端
+           ========================================================================== */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(36,67,91,0.7); z-index: 1000; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; backdrop-filter: blur(3px);}
+        .modal-content { background: var(--bg-paper); padding: 30px; border-radius: 20px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.2); border: 4px solid white; max-height: 90vh; overflow-y: auto;}
+        .record-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 2px dashed #D5C295; font-size: 1.1rem; color: var(--text-main); font-weight: bold;}
+        .record-history { font-size: 0.85rem; color: var(--text-sub); text-align: right; margin-top: 5px; font-weight: normal;}
+
+        .history-table-container { width: 95%; max-width: 800px; max-height: 70vh; overflow-y: auto; background: white; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-top: 80px; z-index: 10;}
+        .history-table { width: 100%; border-collapse: collapse; text-align: center; } .history-table th { background: var(--primary); color: white; padding: 15px; position: sticky; top: 0; z-index: 2;} .history-table td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 1.1rem; }
+        
         #screen-admin-dashboard { overflow-y: auto; justify-content: flex-start; padding: 20px;}
-        .admin-container { max-width: 1100px; width: 100%; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box;}
-        .admin-header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; margin-bottom: 20px;}
-        .admin-container h1, .admin-container h2 { color: #2c3e50; margin: 0; }
-        .admin-container h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 30px;}
+        .admin-container { max-width: 1100px; width: 100%; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); box-sizing: border-box; z-index: 10;}
+        .admin-header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px;}
         .admin-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-radius: 8px; overflow: hidden;}
-        .admin-table th, .admin-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-        .admin-table th { background: #34495e; color: white; font-size: 1.1rem;}
-        .admin-table tr:hover { background: #f9f9f9; }
-        .btn-view { background: #2ecc71; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;}
-        .warning { color: #d32f2f; font-weight: bold; background: #ffebee; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;}
+        .admin-table th, .admin-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; } .admin-table th { background: #34495e; color: white; font-size: 1.1rem;} .admin-table tr:hover { background: #f9f9f9; }
+        .btn-view { background: var(--success-green); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;}
+        .warning { color: var(--error-coral); font-weight: bold; background: #ffebee; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;}
         
         .admin-modal-content { background: white; padding: 25px; border-radius: 15px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .admin-modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px;}
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;}
-        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #eee;}
-        .stat-card .value { font-size: 2rem; font-weight: bold; color: #2980b9;}
-        .err-analysis { color: #e74c3c; font-weight: bold; font-size: 0.95rem; display: block; margin-top: 5px; padding: 5px; background: #fdedec; border-radius: 5px;}
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;} .stat-card { background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #eee;} .stat-card .value { font-size: 2rem; font-weight: bold; color: var(--primary);}
+        .err-analysis { color: var(--error-coral); font-weight: bold; font-size: 0.95rem; display: block; margin-top: 5px; padding: 5px; background: #fdedec; border-radius: 5px;}
+
+        /* RWD: 手機版雙欄排版 */
+        @media (max-width: 600px) { 
+            .map-canvas { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "add sub" "mul div" "wp ord" "port port"; gap: 22px 10px; margin-top: 96px; padding: 0 12px 48px; }
+            #node-add, #node-sub, #node-mul, #node-div, #node-wp, #node-ord { justify-self: center; margin: 0; }
+            .explorer-boat, .map-path-bg { display: none; }
+            .history-table-container { margin-top: 110px; }
+            .history-table th, .history-table td { padding: 8px 4px; font-size: .85rem; word-break: break-word; }
+            #screen-role-select h1 { font-size: 2.4rem !important; }
+            .role-card { width: min(250px, 80vw); padding: 18px 16px; }
+            .role-icon { font-size: 3.2rem; margin-bottom: 8px; }
+        }
+        @media (prefers-reduced-motion: reduce) { .island-shape, .cloud, .apply-shake { animation: none !important; transform: none !important; } }
     </style>
 </head>
 <body>
 
     <div id="loading">📡 資料同步中...</div>
+    <div id="star-animation-container"></div>
 
     <!-- ================= 統一入口：身分選擇 ================= -->
     <div id="screen-role-select" class="screen active">
-        <h1 style="color: var(--primary); font-size: 2.5rem; text-align: center;">🌴 四則運算冒險島</h1>
-        <p style="font-size: 1.2rem; color: #7f8c8d;">請選擇您的身分進入系統</p>
+        <div class="bg-far"><div class="mountains"></div><div class="cloud cloud1"></div><div class="cloud cloud2"></div></div>
+        <div class="bg-near"><div class="waves"></div></div>
+        
+        <h1 style="color: white; font-size: 3.5rem; text-align: center; margin-bottom: 5px; text-shadow: 0 4px 6px rgba(0,0,0,0.2); z-index: 10;">🌈 數學彩虹群島</h1>
+        <p style="font-size: 1.2rem; color: white; z-index: 10; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.2);">選擇身分，開始今天的數學冒險！</p>
         
         <div class="role-container">
-            <div class="role-card student" onclick="switchScreen('screen-student-login')">
-                <div class="role-icon">🧑‍🎓</div>
-                <h2>我是學生</h2>
-                <p>開始探險與挑戰關卡</p>
-            </div>
-            
-            <div class="role-card teacher" onclick="switchScreen('screen-admin-login')">
-                <div class="role-icon">🧑‍🏫</div>
-                <h2>我是老師</h2>
-                <p>查看班級與學生分析</p>
-            </div>
+            <button class="role-card student" id="btn-role-student" type="button" aria-label="以學生身分進入">
+                <div class="role-icon" aria-hidden="true">🧑‍🎓</div><h2 style="color:var(--success-green); margin-top:0;">我是學生</h2><p style="color:var(--text-sub); margin-bottom:0;">登入帳號，前往六座數學島嶼</p>
+            </button>
+            <button class="role-card teacher" id="btn-role-teacher" type="button" aria-label="以教師身分進入">
+                <div class="role-icon" aria-hidden="true">🧑‍🏫</div><h2 style="color:var(--primary); margin-top:0;">我是老師</h2><p style="color:var(--text-sub); margin-bottom:0;">查看學生進度與作答紀錄</p>
+            </button>
         </div>
     </div>
 
     <!-- ================= 學生端：登入 ================= -->
     <div id="screen-student-login" class="screen">
+        <div class="bg-far"><div class="mountains"></div><div class="cloud cloud1"></div></div>
+        <div class="bg-near"><div class="waves"></div></div>
         <div class="login-box">
-            <h1 style="color: #27ae60;">🧑‍🎓 學生登入</h1>
-            <p>請輸入不會和別人重複的專屬代碼</p>
+            <h1 style="color: var(--success-green); margin-top:0;">🧑‍🎓 小領航員登入</h1>
+            <p style="color:var(--text-sub); font-weight:bold;">請輸入專屬代碼</p>
             <input type="text" id="student-username" class="input-login" placeholder="例如: 3A01小明">
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button class="btn" style="background:#27ae60; width:50%;" onclick="doStudentAuth('register')">🌟 註冊新帳號</button>
-                <button class="btn" style="background:#2980b9; width:50%;" onclick="doStudentAuth('login')">🔙 舊玩家登入</button>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-direction: column; width: 100%;">
+                <button class="btn-game btn-primary" onclick="doStudentAuth('register')">🌟 註冊新帳號</button>
+                <button class="btn-game btn-action" onclick="doStudentAuth('login')">🔙 舊玩家登入</button>
             </div>
-            <button class="btn" style="background:#95a5a6; width:100%; margin-top: 15px;" onclick="switchScreen('screen-role-select')">返回身分選擇</button>
+            <button class="btn-game btn-secondary" style="width:100%; margin-top: 25px;" onclick="logoutToRoleSelect()">返回身分選擇</button>
         </div>
     </div>
 
-    <!-- 學生端：地圖 -->
+    <!-- ================= 學生端：冒險地圖 ================= -->
     <div id="screen-map" class="screen">
-        <div class="header">
-            <div>
-                👤 <span id="ui-nickname"></span>
-                <button onclick="showHistoryScreen()" style="margin-left:15px; padding:5px 10px; background:#9b59b6; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">📊 我的歷程</button>
-            </div>
-            <div>
-                ⭐ 總計：<span id="ui-total-stars">0</span>
-                <button onclick="location.reload()" style="margin-left:15px; padding:5px 10px; background:#e74c3c; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">登出</button>
+        <div class="bg-far"><div class="mountains"></div><div class="cloud cloud1"></div><div class="cloud cloud2"></div></div>
+        <div class="bg-near"><div class="waves"></div></div>
+        
+        <div class="top-status-bar">
+            <div class="status-pill">👤 <span id="ui-nickname" style="color:var(--primary);"></span></div>
+            <div style="display:flex; gap:10px;">
+                <div class="status-pill" style="color:var(--warning-orange);">⭐ <span id="ui-total-stars">0</span></div>
+                <button class="btn-game btn-danger" style="padding: 8px 15px; font-size:1rem;" onclick="logoutToRoleSelect()">登出</button>
             </div>
         </div>
-        <h2 style="margin-top: 80px;">選擇要探險的島嶼</h2>
-        <div class="map-container">
-            <div class="island-card" style="border-color:#4CAF50;" onclick="showIslandModal('加法島')">➕<br>加法島</div>
-            <div class="island-card" style="border-color:#FF9800;" onclick="showIslandModal('減法島')">➖<br>減法島</div>
-            <div class="island-card" style="border-color:#9C27B0;" onclick="showIslandModal('乘法島')">✖️<br>乘法島</div>
-            <div class="island-card" style="border-color:#2196F3;" onclick="showIslandModal('除法島')">➗<br>除法島</div>
-            <div class="island-card" style="border-color:#34495e; background:#ecf0f1;" onclick="showIslandModal('四則運算島')">🏛️<br>四則運算島</div>
+
+        <div class="adventure-map map-canvas">
+            <div class="map-path-bg"></div>
+            
+            <button class="island-node star-0" id="node-add" onclick="triggerBoat('加法島', this)">
+                <div class="island-art">🐸</div><div class="island-label">➕ 加法島</div>
+            </button>
+            <button class="island-node star-0" id="node-sub" onclick="triggerBoat('減法島', this)">
+                <div class="island-art">📦</div><div class="island-label">➖ 減法島</div>
+            </button>
+            <button class="island-node star-0" id="node-mul" onclick="triggerBoat('乘法島', this)">
+                <div class="island-art">🪴</div><div class="island-label">✖️ 乘法島</div>
+            </button>
+            <button class="island-node star-0" id="node-div" onclick="triggerBoat('除法島', this)">
+                <div class="island-art">🍬</div><div class="island-label">➗ 除法島</div>
+            </button>
+            <button class="island-node star-0" id="node-wp" onclick="triggerBoat('應用題島', this)">
+                <div class="island-art">📖</div><div class="island-label">❓ 應用題島</div>
+            </button>
+            <button class="island-node star-0" id="node-ord" onclick="triggerBoat('四則運算島', this)">
+                <div class="island-art">🏛️</div><div class="island-label">👑 星軌神殿</div>
+            </button>
+
+            <!-- 星光港與小船 -->
+            <button class="starlight-port" onclick="showHistoryScreen()">
+                <div class="port-cabin"></div>
+                <div class="port-dock"></div>
+                <div class="island-label" style="margin-top: -10px;">🏠 我的冒險小屋</div>
+            </button>
+            <div class="explorer-boat" id="player-boat">⛵</div>
         </div>
     </div>
 
-    <!-- 學生端：學習歷程 -->
+    <!-- 我的小屋 (歷史紀錄) -->
     <div id="screen-history" class="screen">
-        <div class="header">
-            <button onclick="switchScreen('screen-map')" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
-            <div style="color:var(--accent); font-size:1.5rem; font-weight:bold;">📊 我的學習歷程檔案</div>
-            <div>⭐ 總計：<span id="ui-history-total">0</span></div>
+        <div class="bg-far"><div class="mountains"></div></div>
+        <div class="top-status-bar">
+            <button class="btn-game btn-secondary" style="padding:8px 15px; font-size:1rem;" onclick="switchScreen('screen-map')">🔙 回港口</button>
+            <div style="color:var(--text-main); font-size:1.5rem; font-weight:bold; background:rgba(255,255,255,0.9); padding:5px 15px; border-radius:15px; z-index:10;">📖 冒險日誌</div>
+            <div class="status-pill" style="color:var(--warning-orange);">⭐ 總星數：<span id="ui-history-total">0</span></div>
         </div>
         <div class="history-table-container">
-            <table class="history-table">
-                <thead><tr><th>挑戰時間</th><th>島嶼</th><th>關卡區域</th><th>答對率</th><th>獲得星星</th></tr></thead>
-                <tbody id="history-tbody"></tbody>
-            </table>
+            <table class="history-table"><thead><tr><th>挑戰時間</th><th>島嶼</th><th>關卡區域</th><th>答對率</th><th>獲得星星</th></tr></thead><tbody id="history-tbody"></tbody></table>
         </div>
     </div>
 
-    <!-- 學生端：關卡紀錄 Modal -->
+    <!-- 關卡進入 Modal -->
     <div id="modal-report" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="modal-title" style="color:var(--primary); margin-top:0;">島嶼挑戰紀錄</h2>
+            <h2 id="modal-title" style="color:var(--text-main); margin-top:0;">島嶼挑戰紀錄</h2>
             <div id="modal-records"></div>
             <div id="modal-actions" style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;"></div>
         </div>
     </div>
 
-    <!-- 學生端：遊戲區 -->
+    <!-- ================= 學生端：島內遊戲區 ================= -->
     <div id="screen-game" class="screen">
-        <div class="header">
-            <button onclick="backToMap()" style="padding:5px 10px; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">🔙 回地圖</button>
-            <div id="ui-island-name" style="color:var(--accent); font-weight:bold; font-size:1.2rem;"></div>
-            <div>本局獲得：⭐ <span id="ui-island-stars">0</span></div>
+        <div class="ocean-bg"></div>
+        <div class="clouds-container"><div class="cloud cloud1"></div><div class="cloud cloud2"></div></div>
+        
+        <div class="top-status-bar">
+            <button class="btn-game btn-secondary" style="padding:8px 15px; font-size:1rem;" onclick="backToMap()">🔙 逃跑</button>
+            <div class="status-pill" style="color:var(--warning-orange);">本局獲得：⭐ <span id="ui-island-stars">0</span></div>
         </div>
-        <div class="game-container">
+        
+        <div class="game-area">
+            <h2 id="ui-island-name" style="color:var(--text-main); font-size:1.8rem; margin: 0 0 5px 0; text-shadow: 0 2px 4px rgba(255,255,255,0.8); z-index: 10;">島嶼名稱</h2>
+            <div class="progress-path" id="ui-progress-path"></div>
+
+            <!-- 視圖1：動畫劇場 -->
             <div id="animation-view">
                 <div id="theater-stage" class="theater"></div>
-                <div id="theater-sub" class="subtitle">動畫載入中...</div>
-                <button class="btn" style="background:var(--correct);" onclick="endAnimation()">➡️ 換我試試看 (進入測驗)</button>
+                <div id="theater-sub" class="theater-subtitle">動畫載入中...</div>
+                <button class="btn-next-pop" id="btn-anim-next" style="display:block; animation:none;" onclick="endAnimation()">➡️ 換我試試看</button>
             </div>
-            <div id="interactive-view">
-                <div class="blackboard">
-                    <div id="ui-zone" class="zone-badge">概念學習區</div>
-                    <div class="expression-display" id="ui-expression"></div>
-                    <div>
-                        <span style="font-size: 2rem; font-weight: bold;">=</span>
-                        <input type="text" id="ui-input" class="answer-box" readonly placeholder="?">
+            
+            <div style="display:flex; flex-direction:column; align-items:center; width:100%; position:relative;">
+                
+                <!-- 視圖2：基礎四島與神殿測驗區 -->
+                <div id="interactive-view">
+                    <div class="story-panel">
+                        <div class="tape-decoration"></div>
+                        <div class="badge-pill" id="ui-zone-badge-basic">基礎運算挑戰</div>
+                        <div class="expression-display" id="ui-expression"></div>
+                        <div class="input-wrapper">
+                            <span style="font-size: 2.5rem; font-weight: bold; color: var(--text-sub);">＝</span>
+                            <input type="text" id="ui-input" class="answer-box" readonly placeholder="?">
+                        </div>
                     </div>
+
+                    <div class="mascot-wrapper">
+                        <div id="ui-feedback" class="feedback-bubble info">🤖 請算出紙卡上的答案！</div>
+                        <div class="mascot-light"><div class="mascot-body">⭐<div class="mascot-compass"></div></div></div>
+                    </div>
+
+                    <div class="numpad">
+                        <button class="btn-num" onclick="typeNum(1)">1</button><button class="btn-num" onclick="typeNum(2)">2</button><button class="btn-num" onclick="typeNum(3)">3</button>
+                        <button class="btn-num" onclick="typeNum(4)">4</button><button class="btn-num" onclick="typeNum(5)">5</button><button class="btn-num" onclick="typeNum(6)">6</button>
+                        <button class="btn-num" onclick="typeNum(7)">7</button><button class="btn-num" onclick="typeNum(8)">8</button><button class="btn-num" onclick="typeNum(9)">9</button>
+                        <button class="btn-num btn-action-clear" onclick="typeNum('C')">清除</button>
+                        <button class="btn-num" onclick="typeNum(0)">0</button>
+                        <button class="btn-num btn-action-back" onclick="typeNum('<')">倒退</button>
+                        
+                        <button class="btn-game btn-primary" id="btn-submit" style="grid-column:span 3; padding:18px; font-size:1.6rem;" onclick="submitAns()">✅ 確認送出</button>
+                    </div>
+                    <button class="btn-next-pop" id="btn-next" onclick="nextQ()">➡️ 下一題</button>
+                    <button class="btn-next-pop" id="btn-finish" style="background:var(--star-gold); color:var(--text-main); box-shadow: 0 7px 0 #D4AC0D;" onclick="backToMap()">🏆 領取星星回地圖</button>
                 </div>
-                <div id="ui-feedback" class="feedback info">🤖 請算出黑板上的答案！</div>
-                <div class="numpad">
-                    <button class="btn-num" onclick="typeNum(1)">1</button><button class="btn-num" onclick="typeNum(2)">2</button><button class="btn-num" onclick="typeNum(3)">3</button>
-                    <button class="btn-num" onclick="typeNum(4)">4</button><button class="btn-num" onclick="typeNum(5)">5</button><button class="btn-num" onclick="typeNum(6)">6</button>
-                    <button class="btn-num" onclick="typeNum(7)">7</button><button class="btn-num" onclick="typeNum(8)">8</button><button class="btn-num" onclick="typeNum(9)">9</button>
-                    <button class="btn-num" style="background:var(--accent); color:white;" onclick="typeNum('C')">清除</button><button class="btn-num" onclick="typeNum(0)">0</button><button class="btn-num" style="background:var(--accent); color:white;" onclick="typeNum('<')">倒退</button>
-                    <button class="btn-submit" id="btn-submit" onclick="submitAns()">✅ 送出答案</button>
-                    <button class="btn-submit" id="btn-next" onclick="nextQ()" style="display:none; background:var(--correct);">➡️ 下一題</button>
-                    <button class="btn-submit" id="btn-finish" onclick="backToMap()" style="display:none; background:var(--primary);">🏆 儲存成績回地圖</button>
+
+                <!-- 視圖3：應用題島專屬測驗區 -->
+                <div id="word-problem-view">
+                    <div class="story-panel">
+                        <div class="tape-decoration" style="background: rgba(69, 184, 172, 0.6);"></div>
+                        <div class="badge-pill" style="background:var(--isl-wp);">📖 閱讀理解區</div>
+                        <button class="btn-read-aloud" onclick="WordProblemUI.speakQuestion()">🔊 朗讀</button>
+                        <div id="wp-story-text" class="wp-text-content"></div>
+                    </div>
+                    
+                    <div class="mascot-wrapper">
+                        <div id="wp-feedback" class="feedback-bubble info">🤖 請先判斷要用什麼方法，再算出答案！</div>
+                        <div class="mascot-light"><div class="mascot-body">⭐<div class="mascot-compass"></div></div></div>
+                    </div>
+                    
+                    <div class="wp-action-panel">
+                        <div class="op-title">🤔 第一步：選擇運算方法</div>
+                        <div class="op-buttons">
+                            <button class="btn-op" id="op-add" onclick="WordProblemUI.selectOp('+')">➕ 加法</button>
+                            <button class="btn-op" id="op-sub" onclick="WordProblemUI.selectOp('-')">➖ 減法</button>
+                            <button class="btn-op" id="op-mul" onclick="WordProblemUI.selectOp('*')">✖️ 乘法</button>
+                            <button class="btn-op" id="op-div" onclick="WordProblemUI.selectOp('/')">➗ 除法</button>
+                        </div>
+                        
+                        <div class="op-title">✍️ 第二步：輸入答案數字</div>
+                        <div class="input-wrapper" style="margin-bottom: 20px;">
+                            <input type="number" id="wp-answer-input" class="answer-box" placeholder="?" style="width: 140px;">
+                            <span id="wp-unit-label" style="font-size:1.8rem; font-weight:bold; color:var(--text-sub);">單位</span>
+                        </div>
+                        
+                        <button class="btn-game btn-primary" id="wp-btn-submit" style="width:100%; padding:18px; font-size:1.5rem;" onclick="WordProblemUI.submit()">✅ 確認送出</button>
+                    </div>
+                    <button class="btn-next-pop" id="wp-btn-next" onclick="nextQ()">➡️ 下一題</button>
+                    <button class="btn-next-pop" id="wp-btn-finish" style="background:var(--star-gold); color:var(--text-main); box-shadow: 0 7px 0 #D4AC0D;" onclick="backToMap()">🏆 領取星星回地圖</button>
                 </div>
             </div>
         </div>
     </div>
 
-
-    <!-- ================= 教師端：登入 ================= -->
+    <!-- ================= 教師端 ================= -->
     <div id="screen-admin-login" class="screen">
-        <div class="login-box">
-            <h1 style="color: #2980b9;">🧑‍🏫 教師戰情室</h1>
-            <p>請輸入管理員密碼以查看全班分析</p>
-            <input type="password" id="admin-pwd" class="input-login" placeholder="密碼 (預設 admin888)">
-            <br>
-            <button class="btn" style="background:#3498db; width:100%; margin-bottom: 10px;" onclick="doAdminAuth()">登入並載入資料</button>
-            <button class="btn" style="background:#95a5a6; width:100%;" onclick="switchScreen('screen-role-select')">返回身分選擇</button>
-            <p id="admin-error-msg" style="color: #e74c3c; font-weight: bold; margin-top: 15px;"></p>
+        <div class="bg-far"><div class="mountains"></div></div>
+        <div class="login-box" style="position:relative; z-index:5;">
+            <h1 style="color: var(--primary); margin-top:0;">🧑‍🏫 教師戰情室</h1>
+            <p style="color:var(--text-sub); font-weight:bold;">請輸入管理員密碼</p>
+            <input type="password" id="admin-pwd" class="input-login" placeholder="請輸入教師密碼">
+            <button class="btn-game btn-action" style="width:100%; margin-bottom: 15px;" onclick="doAdminAuth()">登入並載入資料</button>
+            <button class="btn-game btn-secondary" style="width:100%;" onclick="logoutToRoleSelect()">返回身分選擇</button>
+            <p id="admin-error-msg" style="color: var(--error-coral); font-weight: bold; margin-top: 15px;"></p>
         </div>
     </div>
 
-    <!-- 教師端：儀表板 -->
-    <div id="screen-admin-dashboard" class="screen">
+    <div id="screen-admin-dashboard" class="screen" style="background:var(--bg-paper);">
         <div class="admin-container">
             <div class="admin-header-area">
-                <h1 id="dashboard-title">📊 班級學習分析儀表板</h1>
-                <button class="btn" style="background:#e74c3c;" onclick="location.reload()">登出系統</button>
+                <h1 id="dashboard-title" style="color:var(--text-main);">📊 班級學習分析儀表板</h1>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn-game btn-primary" onclick="refreshAdminData()" id="btn-admin-refresh">🔄 重新整理資料</button>
+                    <button class="btn-game btn-danger" onclick="logoutToRoleSelect()">🚪 登出系統</button>
+                </div>
             </div>
-
-            <h2>⭐ 學生名單與學習概況</h2>
-            <table class="admin-table">
-                <thead><tr><th>學生帳號</th><th>暱稱</th><th>獲得總星數</th><th>最後登入時間</th><th>操作</th></tr></thead>
-                <tbody id="students-list"></tbody>
-            </table>
+            <button class="btn-game" style="background:var(--success-green); margin-bottom:15px; box-shadow:0 6px 0 #1e8449;" onclick="exportCSV()">📥 匯出全班作答明細 (CSV)</button>
             
-            <h2>⚠️ 需要輔導名單 (卡關警示)</h2>
-            <table class="admin-table">
-                <thead><tr><th>學生帳號</th><th>暱稱</th><th>卡關狀況</th></tr></thead>
-                <tbody id="warning-list"></tbody>
-            </table>
+            <h2 style="color:var(--text-main);">⭐ 學生名單與學習概況</h2>
+            <div style="overflow-x: auto;">
+                <table class="admin-table"><thead><tr><th>學生帳號</th><th>暱稱</th><th>獲得總星數</th><th>最後登入時間</th><th>操作</th></tr></thead><tbody id="students-list"></tbody></table>
+            </div>
+            
+            <h2 style="color:var(--text-main);">⚠️ 需要輔導名單 (卡關警示)</h2>
+            <div style="overflow-x: auto;">
+                <table class="admin-table"><thead><tr><th>學生帳號</th><th>暱稱</th><th>卡關狀況</th></tr></thead><tbody id="warning-list"></tbody></table>
+            </div>
         </div>
     </div>
 
     <!-- 教師端：學生深度分析 Modal -->
     <div id="admin-student-modal" class="modal-overlay">
-        <div class="admin-modal-content">
+        <div class="admin-modal-content" style="max-width:900px; background:white;">
             <div class="admin-modal-header">
-                <h1 id="admin-modal-name" style="color:#2980b9; margin:0;">學生姓名</h1>
-                <button class="btn" style="background:#95a5a6; padding: 5px 15px;" onclick="closeAdminModal()">✖ 關閉</button>
+                <h1 id="admin-modal-name" style="color:var(--primary); margin:0;">學生姓名</h1>
+                <button class="btn-game btn-secondary" style="padding: 8px 15px;" onclick="closeAdminModal()">✖ 關閉</button>
             </div>
-
             <div class="stats-grid">
                 <div class="stat-card">總作答題數<div class="value" id="admin-modal-total">0</div></div>
-                <div class="stat-card">整體答對率<div class="value" id="admin-modal-correct" style="color:#27ae60;">0%</div></div>
-                <div class="stat-card">整體答錯率<div class="value" id="admin-modal-wrong" style="color:#e74c3c;">0%</div></div>
+                <div class="stat-card">整體答對率<div class="value" id="admin-modal-correct" style="color:var(--success-green);">0%</div></div>
+                <div class="stat-card">整體答錯率<div class="value" id="admin-modal-wrong" style="color:var(--error-coral);">0%</div></div>
             </div>
-
-            <h2>🗺️ 各島嶼過關進度</h2>
-            <table class="admin-table" style="font-size: 0.95rem;">
-                <thead><tr><th>島嶼名稱</th><th>關卡區域</th><th>最佳答對率</th><th>獲得星數</th><th>過關時間</th></tr></thead>
-                <tbody id="admin-modal-prog"></tbody>
-            </table>
-
-            <h2>📖 錯題分析本 (觀念迷思診斷)</h2>
-            <table class="admin-table" style="font-size: 0.95rem;">
-                <thead><tr><th>島嶼</th><th>當時題目</th><th>填寫錯誤答案</th><th>系統迷思診斷</th></tr></thead>
-                <tbody id="admin-modal-wrong-list"></tbody>
-            </table>
+            <h2 style="color:var(--text-main);">🗺️ 各島嶼過關進度</h2>
+            <table class="admin-table" style="font-size: 0.95rem;"><thead><tr><th>島嶼名稱</th><th>關卡區域</th><th>最佳答對率</th><th>獲得星數</th><th>過關時間</th></tr></thead><tbody id="admin-modal-prog"></tbody></table>
+            <h2 style="color:var(--text-main);">📖 錯題分析本 (觀念迷思診斷)</h2>
+            <table class="admin-table" style="font-size: 0.95rem;"><thead><tr><th>島嶼</th><th>當時題目</th><th>填寫錯誤答案</th><th>系統迷思診斷</th></tr></thead><tbody id="admin-modal-wrong-list"></tbody></table>
         </div>
     </div>
 
+    <!-- ==========================================================================
+         JavaScript 核心邏輯
+         ========================================================================== -->
     <script>
         // 🚨 這裡請貼上您的 GAS Web App URL
         const GAS_URL = "https://script.google.com/macros/s/AKfycbxAQNfjduy7o0oYAGq_rDE3dpZfvEtz4TdHjNo_7q4XRHEDjO3yKlGlXuv_k__-iZsnmQ/exec"; 
         
-        // 全域變數
-        let currentUser = null;
-        let selectedIslandForModal = "";
-        let globalUsers = [];
-        let globalLogs = [];
-
+        let currentUser = null; let selectedIslandForModal = ""; let globalUsers = []; let globalLogs = [];
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
+        function escapeHTML(str) {
+            if(str === null || str === undefined) return '';
+            return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+        }
+
+        function generateUUID() { return 'USR_' + new Date().getTime() + '_' + Math.floor(Math.random() * 10000); }
+        
         async function apiCall(payload) {
-            if(GAS_URL.includes("請換成")) return { status: 'offline' };
-            try { 
-                const r = await fetch(GAS_URL, { method: 'POST', mode: 'cors', body: JSON.stringify(payload) }); 
-                return await r.json(); 
-            } catch(e){ 
-                console.error(e);
-                return { status: 'error', message: '連線失敗，請檢查網址或網路！' }; 
+            if(!GAS_URL || !GAS_URL.startsWith("http")) return { status: 'offline' };
+            try { const r = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }); return await r.json(); } 
+            catch(e){ console.warn("API Error", e); return { status: 'error', message: '連線失敗，請檢查網址或網路！' }; }
+        }
+        
+        function switchScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const studentBtn = document.getElementById("btn-role-student");
+            const teacherBtn = document.getElementById("btn-role-teacher");
+            if(studentBtn) studentBtn.addEventListener("click", () => switchScreen("screen-student-login"));
+            if(teacherBtn) teacherBtn.addEventListener("click", () => switchScreen("screen-admin-login"));
+        });
+
+        function logoutToRoleSelect() {
+            currentUser = null; selectedIslandForModal = "";
+            document.getElementById('student-username').value = ""; document.getElementById('admin-pwd').value = "";
+            switchScreen('screen-role-select');
+        }
+
+        // ==========================================
+        // 🌟 視覺與特效引擎
+        // ==========================================
+        const EffectEngine = {
+            shakeElement: function(elId) {
+                const el = document.getElementById(elId);
+                if(el) { el.classList.remove('apply-shake'); void el.offsetWidth; el.classList.add('apply-shake'); }
+            },
+            flyStar: async function() {
+                const container = document.getElementById('star-animation-container');
+                const star = document.createElement('div'); star.className = 'flying-star'; star.innerText = '⭐';
+                container.appendChild(star); star.style.animation = 'starFly 1.5s ease-in-out forwards';
+                await delay(1500); container.innerHTML = '';
+            },
+            updateMapVisuals: function() {
+                if(!currentUser || !currentUser.progress) return;
+                const islandIds = { "加法島":"node-add", "減法島":"node-sub", "乘法島":"node-mul", "除法島":"node-div", "應用題島":"node-wp", "四則運算島":"node-ord" };
+                for(let isl in islandIds) {
+                    let maxStar = 0;
+                    if(currentUser.progress[isl]) {
+                        ['LEARNING', 'PRACTICE', 'MASTERY'].forEach(z => {
+                            if(currentUser.progress[isl][z]) {
+                                currentUser.progress[isl][z].forEach(r => { let s = typeof r === 'object' ? r.stars : 0; if(s > maxStar) maxStar = s; });
+                            }
+                        });
+                    }
+                    let el = document.getElementById(islandIds[isl]);
+                    if(el) el.className = `island-node isl-${islandIds[isl].split('-')[1]} star-${maxStar}`;
+                }
             }
-        }
+        };
 
-        function switchScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
+        function showWordProblemNextAction(nextAction) {
+            const submitBtn = document.getElementById('wp-btn-submit'), nextBtn = document.getElementById('wp-btn-next'), finishBtn = document.getElementById('wp-btn-finish');
+            if (nextAction === "RESET") { submitBtn.style.display = 'block'; nextBtn.classList.remove('is-visible'); finishBtn.classList.remove('is-visible'); } 
+            else if (nextAction === "FINISH") { submitBtn.style.display = 'none'; nextBtn.classList.remove('is-visible'); finishBtn.classList.add('is-visible'); } 
+            else { submitBtn.style.display = 'none'; nextBtn.classList.add('is-visible'); finishBtn.classList.remove('is-visible'); }
+        }
+        function showBasicNextAction(nextAction) {
+            const submitBtn = document.getElementById('btn-submit'), nextBtn = document.getElementById('btn-next'), finishBtn = document.getElementById('btn-finish');
+            if (nextAction === "RESET") { submitBtn.style.display = 'block'; nextBtn.classList.remove('is-visible'); finishBtn.classList.remove('is-visible'); } 
+            else if (nextAction === "FINISH") { submitBtn.style.display = 'none'; nextBtn.classList.remove('is-visible'); finishBtn.classList.add('is-visible'); } 
+            else { submitBtn.style.display = 'none'; nextBtn.classList.add('is-visible'); finishBtn.classList.remove('is-visible'); }
         }
 
         // ==========================================
-        // 🧑‍🎓 學生端邏輯
+        // 🧑‍🎓 學生端登入與歷程
         // ==========================================
+        const ISLAND_ALIASES = { "application": "應用題島", "application_problem": "應用題島", "word_problem": "應用題島", "wordProblem": "應用題島", "story_problem": "應用題島", "應用題島": "應用題島" };
+
         async function doStudentAuth(actionType) {
             const username = document.getElementById('student-username').value.trim();
             if(!username) return alert("請輸入代碼！");
-            
             document.getElementById('loading').style.display = 'flex';
             const res = await apiCall({ action: actionType, username: username });
             document.getElementById('loading').style.display = 'none';
-            
-            if (res.status === 'error') { alert(res.message); return; }
-            
-            if (res.status === 'offline') {
-                currentUser = { username: username, nickname: username, total_stars: 0, progress: {} };
-            } else {
-                currentUser = res.user_data;
-                if (typeof currentUser.progress === 'string') {
-                    try { currentUser.progress = JSON.parse(currentUser.progress); } catch(e) { currentUser.progress = {}; }
-                }
+            if (res.status === 'error' && res.message) { alert(res.message); return; }
+            if (res.status === 'offline' || res.status === 'error') { currentUser = { user_id: generateUUID(), username: username, nickname: username, total_stars: 0, progress: {} }; } 
+            else { 
+                currentUser = res.user_data; 
+                if(!currentUser.user_id) currentUser.user_id = generateUUID(); 
+                if (typeof currentUser.progress === 'string') { try { currentUser.progress = JSON.parse(currentUser.progress); } catch(e) { currentUser.progress = {}; } } 
             }
             if (!currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
-            
-            document.getElementById('ui-nickname').innerText = currentUser.nickname;
-            document.getElementById('ui-total-stars').innerText = currentUser.total_stars || 0;
+            document.getElementById('ui-nickname').innerText = currentUser.nickname; document.getElementById('ui-total-stars').innerText = currentUser.total_stars || 0;
+            EffectEngine.updateMapVisuals();
             switchScreen('screen-map');
         }
 
         function showHistoryScreen() {
             try {
                 document.getElementById('ui-history-total').innerText = currentUser.total_stars;
-                const tbody = document.getElementById('history-tbody');
-                tbody.innerHTML = "";
-                let allRecords = [];
+                const tbody = document.getElementById('history-tbody'); tbody.innerHTML = ""; let allRecords = [];
                 if (!currentUser || !currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
-
                 for (const [islandName, zones] of Object.entries(currentUser.progress)) {
                     if (!zones || typeof zones !== 'object') continue;
                     for (const [zoneName, records] of Object.entries(zones)) {
                         if (!Array.isArray(records)) continue;
                         let zoneZh = zoneName === "LEARNING" ? "概念學習區" : (zoneName === "PRACTICE" ? "適性練習區" : "掌握確認區");
-                        records.forEach(rec => {
-                            if (typeof rec === 'object' && rec.date) {
-                                allRecords.push({ island: islandName, zone: zoneZh, stars: rec.stars, acc: rec.accuracy, dateStr: rec.date, time: new Date(rec.date).getTime() });
-                            }
-                        });
+                        records.forEach(rec => { if (typeof rec === 'object' && rec.date) { allRecords.push({ island: islandName, zone: zoneZh, stars: rec.stars, acc: rec.accuracy, dateStr: rec.date, time: new Date(rec.date).getTime() }); } });
                     }
                 }
                 allRecords.sort((a, b) => b.time - a.time);
                 if (allRecords.length === 0) { tbody.innerHTML = "<tr><td colspan='5' style='padding:20px; color:#7f8c8d;'>目前還沒有挑戰紀錄喔！趕快去探險吧！</td></tr>"; } 
-                else {
-                    allRecords.forEach(r => {
-                        let starStr = r.stars > 0 ? "⭐".repeat(r.stars) : "完成";
-                        tbody.innerHTML += `<tr><td style="color:#7f8c8d; font-size:0.9rem;">${r.dateStr}</td><td style="font-weight:bold; color:var(--primary);">${r.island}</td><td>${r.zone}</td><td style="color:var(--accent); font-weight:bold;">${r.acc}%</td><td style="color:#f39c12;">${starStr}</td></tr>`;
-                    });
-                }
+                else { allRecords.forEach(r => { let starStr = r.stars > 0 ? "⭐".repeat(r.stars) : "完成"; tbody.innerHTML += `<tr><td style="color:#7f8c8d; font-size:0.9rem;">${r.dateStr}</td><td style="font-weight:bold; color:var(--primary);">${r.island}</td><td>${r.zone}</td><td style="color:var(--accent); font-weight:bold;">${r.acc}%</td><td style="color:#f39c12;">${starStr}</td></tr>`; }); }
                 switchScreen('screen-history');
             } catch (err) { console.error(err); alert("讀取歷程時發生狀況！"); }
         }
 
+        function triggerBoat(island, nodeEl) {
+            const boat = document.getElementById('player-boat');
+            const mapRect = document.querySelector('.map-canvas').getBoundingClientRect();
+            const nodeRect = nodeEl.getBoundingClientRect();
+            if (boat && window.innerWidth > 600) {
+                const x = Math.max(0, nodeRect.left - mapRect.left - 50);
+                const y = Math.max(0, nodeRect.top - mapRect.top - 20);
+                boat.style.opacity = 1;
+                boat.style.transform = `translate(${x}px, ${y}px)`;
+            }
+            setTimeout(() => { showIslandModal(island); }, 600);
+        }
+
         function showIslandModal(island) {
             try {
-                selectedIslandForModal = island;
-                document.getElementById('modal-title').innerText = `${island} 挑戰紀錄`;
+                selectedIslandForModal = island; document.getElementById('modal-title').innerText = `${island} 挑戰紀錄`;
                 if (!currentUser.progress || typeof currentUser.progress !== 'object') currentUser.progress = {};
                 let prog = currentUser.progress[island] || { "LEARNING": [], "PRACTICE": [], "MASTERY": [] };
+                const getBestStars = (arr) => { if(!Array.isArray(arr) || arr.length === 0) return 0; let starsArr = arr.map(r => typeof r === 'object' ? r.stars : 0); return Math.max(...starsArr); };
+                let bestLearn = getBestStars(prog["LEARNING"]); let bestPrac = getBestStars(prog["PRACTICE"]);
                 
-                const getBestStars = (arr) => {
-                    if(!Array.isArray(arr) || arr.length === 0) return 0;
-                    let starsArr = arr.map(r => typeof r === 'object' ? r.stars : 0);
-                    return Math.max(...starsArr);
-                };
-
-                let bestLearn = getBestStars(prog["LEARNING"]);
-                let bestPrac = getBestStars(prog["PRACTICE"]);
-                let canPrac = bestLearn >= 2;
-                let canMast = bestPrac >= 2;
+                let canPrac = (island === "應用題島") ? true : bestLearn >= 2; let canMast = (island === "應用題島") ? true : bestPrac >= 2;
 
                 const renderRow = (title, arr) => {
                     let text = "尚未挑戰";
                     if(Array.isArray(arr) && arr.length > 0) {
-                        let best = getBestStars(arr);
-                        let history = arr.map(r => { let st = typeof r === 'object' ? r.stars : 0; return st > 0 ? `${st}⭐` : "完成"; }).join(", ");
+                        let best = getBestStars(arr); let history = arr.map(r => { let st = typeof r === 'object' ? r.stars : 0; return st > 0 ? `${st}⭐` : "完成"; }).join(", ");
                         text = best > 0 ? `最佳: ${best}⭐ <div class="record-history">歷次: ${history}</div>` : `<div class="record-history">練習 ${arr.length} 次</div>`;
                     }
                     return `<div class="record-row"><strong>${title}</strong> <span>${text}</span></div>`;
@@ -393,10 +669,10 @@
 
                 document.getElementById('modal-records').innerHTML = renderRow("概念學習區", prog["LEARNING"]) + renderRow("適性練習區", prog["PRACTICE"]) + renderRow("掌握確認區", prog["MASTERY"]);
                 document.getElementById('modal-actions').innerHTML = `
-                    <button class="btn" style="background:#27ae60;" onclick="enterIslandFromModal('LEARNING')">▶️ 概念學習區 (含動畫)</button>
-                    <button class="btn" style="background:${canPrac ? '#f39c12' : '#bdc3c7'};" ${canPrac ? '' : 'disabled'} onclick="enterIslandFromModal('PRACTICE')">${canPrac ? '🚀 適性練習區' : '🔒 需學習區達 2 星解鎖'}</button>
-                    <button class="btn" style="background:${canMast ? '#e74c3c' : '#bdc3c7'};" ${canMast ? '' : 'disabled'} onclick="enterIslandFromModal('MASTERY')">${canMast ? '⚔️ 掌握確認區' : '🔒 需練習區達 2 星解鎖'}</button>
-                    <button class="btn" style="background:#95a5a6; margin-top:10px;" onclick="document.getElementById('modal-report').style.display = 'none';">🔙 取消返回</button>
+                    <button class="btn-game btn-primary" onclick="enterIslandFromModal('LEARNING')">▶️ 概念學習區 (含動畫)</button>
+                    <button class="btn-game btn-primary" style="background:${canPrac ? '#f39c12' : '#bdc3c7'}; box-shadow:0 6px 0 ${canPrac ? '#d35400' : '#95a5a6'};" ${canPrac ? '' : 'disabled'} onclick="enterIslandFromModal('PRACTICE')">${canPrac ? '🚀 適性練習區' : '🔒 需學習區 2 星解鎖'}</button>
+                    <button class="btn-game btn-primary" style="background:${canMast ? '#e74c3c' : '#bdc3c7'}; box-shadow:0 6px 0 ${canMast ? '#c0392b' : '#95a5a6'};" ${canMast ? '' : 'disabled'} onclick="enterIslandFromModal('MASTERY')">${canMast ? '⚔️ 掌握確認區' : '🔒 需練習區 2 星解鎖'}</button>
+                    <button class="btn-game btn-secondary" style="margin-top:10px;" onclick="document.getElementById('modal-report').style.display = 'none';">🔙 取消</button>
                 `;
                 document.getElementById('modal-report').style.display = 'flex';
             } catch (err) { console.error(err); enterIslandFromModal('LEARNING'); }
@@ -405,112 +681,142 @@
         function enterIslandFromModal(targetZone) {
             document.getElementById('modal-report').style.display = 'none';
             document.getElementById('ui-island-name').innerText = selectedIslandForModal;
+            
+            const sg = document.getElementById('screen-game');
+            sg.className = 'screen active';
+            const themeMap = { "加法島": "theme-addition", "減法島": "theme-subtraction", "乘法島": "theme-multiplication", "除法島": "theme-division", "應用題島": "theme-application", "四則運算島": "theme-order" };
+            sg.classList.add(themeMap[selectedIslandForModal] || "");
+
             GameFlowController.startIsland(selectedIslandForModal, targetZone);
             switchScreen('screen-game'); 
 
-            if (targetZone === "LEARNING") {
-                AnimationEngine.play(selectedIslandForModal);
-            } else {
-                AnimationEngine.isPlaying = false;
-                document.getElementById('animation-view').style.display = 'none';
-                document.getElementById('interactive-view').style.display = 'flex';
-                GameFlowController.loadNextQuestion();
-                renderUI();
-            }
+            if (targetZone === "LEARNING") AnimationEngine.play(selectedIslandForModal);
+            else { AnimationEngine.isPlaying = false; document.getElementById('animation-view').style.display = 'none'; GameFlowController.loadNextQuestion(); renderUI(); }
         }
 
-        function backToMap() {
-            AnimationEngine.isPlaying = false;
-            if(currentUser) document.getElementById('ui-total-stars').innerText = currentUser.total_stars;
-            switchScreen('screen-map');
+        function backToMap() { 
+            AnimationEngine.isPlaying = false; 
+            const _boat = document.getElementById('player-boat'); if (_boat) _boat.style.opacity = 0; 
+            if(currentUser) document.getElementById('ui-total-stars').innerText = currentUser.total_stars; 
+            EffectEngine.updateMapVisuals(); switchScreen('screen-map'); 
         }
 
         // ==========================================
-        // 🎬 動畫引擎與數學大腦 (完整保留)
+        // 🎬 動畫劇場
         // ==========================================
         const AnimationEngine = {
             isPlaying: false,
             play: async function(island) {
-                document.getElementById('animation-view').style.display = 'flex'; document.getElementById('interactive-view').style.display = 'none';
+                document.getElementById('animation-view').style.display = 'flex'; document.getElementById('interactive-view').style.display = 'none'; document.getElementById('word-problem-view').style.display = 'none';
                 this.isPlaying = true; const stage = document.getElementById('theater-stage'); const sub = document.getElementById('theater-sub');
+                
+                const _an = document.getElementById('btn-anim-next'); if (_an) _an.classList.remove('is-visible');
+
                 if (island === "加法島") {
-                    stage.style.background = "#a2d9ce";
-                    stage.innerHTML = `<div style="background:#5dade2;width:250px;height:100px;border-radius:50%;position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);"></div><div id="f1" class="prop" style="left:10%; top:20px;">🐸</div><div id="f2" class="prop" style="left:25%; top:20px;">🐸</div><div id="f3" class="prop" style="left:40%; top:20px;">🐸</div><div id="f4" class="prop" style="left:100%; top:20px;">🐸</div><div id="f5" class="prop" style="left:115%; top:20px;">🐸</div>`;
+                    stage.style.background = "#a2d9ce"; stage.innerHTML = `<div style="background:#5dade2;width:250px;height:100px;border-radius:50%;position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);"></div><div id="f1" class="prop" style="left:10%; top:20px;">🐸</div><div id="f2" class="prop" style="left:25%; top:20px;">🐸</div><div id="f3" class="prop" style="left:40%; top:20px;">🐸</div><div id="f4" class="prop" style="left:100%; top:20px;">🐸</div><div id="f5" class="prop" style="left:115%; top:20px;">🐸</div>`;
                     sub.innerText = "「池塘裡原本有 3 隻青蛙...」"; await delay(500); if(!this.isPlaying) return; ['f1','f2','f3'].forEach(id => document.getElementById(id).style.opacity = 1);
                     await delay(2000); if(!this.isPlaying) return; sub.innerText = "「草叢裡又跳來了 2 隻青蛙！」"; document.getElementById('f4').style.opacity = 1; document.getElementById('f4').style.left = '60%'; document.getElementById('f5').style.opacity = 1; document.getElementById('f5').style.left = '75%';
                     await delay(2500); if(!this.isPlaying) return; sub.innerText = "「把它們合起來，一共有 5 隻青蛙！ (3 + 2 = 5)」"; for(let i=1; i<=5; i++) document.getElementById(`f${i}`).style.transform += ' translateY(120px)';
                 } else if (island === "減法島") {
-                    stage.style.background = "#f5cba7";
-                    stage.innerHTML = `<div style="background:#d35400;width:100px;height:100px;position:absolute;right:10px;bottom:10px;border-radius:10px;opacity:0.8;display:flex;align-items:center;justify-content:center;font-size:3rem;z-index:1;">📦</div><div id="t1" class="prop" style="left:10%; top:30%;">🧸</div><div id="t2" class="prop" style="left:25%; top:30%;">🧸</div><div id="t3" class="prop" style="left:40%; top:30%;">🚗</div><div id="t4" class="prop" style="left:10%; top:60%;">🚗</div><div id="t5" class="prop" style="left:25%; top:60%; z-index:2;">⚽</div><div id="t6" class="prop" style="left:40%; top:60%; z-index:2;">⚽</div>`;
+                    stage.style.background = "#f5cba7"; stage.innerHTML = `<div style="background:#d35400;width:100px;height:100px;position:absolute;right:10px;bottom:10px;border-radius:10px;opacity:0.8;display:flex;align-items:center;justify-content:center;font-size:3rem;z-index:1;">📦</div><div id="t1" class="prop" style="left:10%; top:30%;">🧸</div><div id="t2" class="prop" style="left:25%; top:30%;">🧸</div><div id="t3" class="prop" style="left:40%; top:30%;">🚗</div><div id="t4" class="prop" style="left:10%; top:60%;">🚗</div><div id="t5" class="prop" style="left:25%; top:60%; z-index:2;">⚽</div><div id="t6" class="prop" style="left:40%; top:60%; z-index:2;">⚽</div>`;
                     sub.innerText = "「地毯上原本有 6 件玩具...」"; await delay(500); if(!this.isPlaying) return; for(let i=1; i<=6; i++) document.getElementById(`t${i}`).style.opacity = 1;
                     await delay(2500); if(!this.isPlaying) return; sub.innerText = "「把其中 2 件玩具收進箱子 (拿走)。」"; document.getElementById('t5').style.left = '75%'; document.getElementById('t5').style.top = '60%'; document.getElementById('t6').style.left = '85%'; document.getElementById('t6').style.top = '60%';
                     await delay(2500); if(!this.isPlaying) return; sub.innerText = "「外面還剩下 4 件玩具！ (6 - 2 = 4)」"; document.getElementById('t5').style.opacity = 0.3; document.getElementById('t6').style.opacity = 0.3;
                 } else if (island === "乘法島") {
-                    stage.style.background = "#d2b4de";
-                    stage.innerHTML = `<div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="font-size:4rem;">🪴<div id="p1" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p2" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p3" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p4" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div></div>`;
+                    stage.style.background = "#d2b4de"; stage.innerHTML = `<div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="font-size:4rem;">🪴<div id="p1" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p2" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p3" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div><div style="font-size:4rem;">🪴<div id="p4" style="font-size:1.5rem;position:absolute;top:-20px;opacity:0;transition:0.5s;">🌱🌱🌱</div></div></div>`;
                     sub.innerText = "「花園裡準備了 4 個花盆 (4 組)。」"; await delay(2500); if(!this.isPlaying) return;
                     sub.innerText = "「每個花盆都要放 3 顆種子，要一樣多喔！」"; for(let i=1; i<=4; i++) { await delay(800); if(!this.isPlaying) return; document.getElementById(`p${i}`).style.opacity = 1; }
                     await delay(2000); if(!this.isPlaying) return; sub.innerText = "「4 組，每組 3 顆，一共有 12 顆！ (4 × 3 = 12)」";
                 } else if (island === "除法島") {
-                    stage.style.background = "#aed6f1";
-                    stage.innerHTML = `<div id="candies" style="font-size:2rem; text-align:center; margin-top:20px; height:40px; letter-spacing:2px;">🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬</div><div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl1"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl2"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl3"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl4"></div></div>`;
+                    stage.style.background = "#aed6f1"; stage.innerHTML = `<div id="candies" style="font-size:2rem; text-align:center; margin-top:20px; height:40px; letter-spacing:2px;">🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬🍬</div><div style="display:flex;justify-content:space-around;width:100%;position:absolute;bottom:20px;"><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl1"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl2"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl3"></div><div style="background:white;border-radius:25px;width:90px;height:45px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -5px #ccc;font-size:1.5rem;white-space:nowrap;" id="pl4"></div></div>`;
                     sub.innerText = "「桌上有 12 顆糖果，要平均分給 4 個盤子。」"; await delay(2500); if(!this.isPlaying) return;
-                    sub.innerText = "「一人一顆輪流分，直到全部分完為止！」"; document.getElementById('candies').innerText = "";
-                    let remainCandies = 12;
-                    for(let round = 1; round <= 3; round++) {
-                        for(let i = 1; i <= 4; i++) { 
-                            await delay(300); if(!this.isPlaying) return; 
-                            document.getElementById(`pl${i}`).innerText += "🍬"; remainCandies--; document.getElementById('candies').innerText = "🍬".repeat(remainCandies);
-                        }
-                    }
+                    sub.innerText = "「一人一顆輪流分，直到全部分完為止！」"; document.getElementById('candies').innerText = ""; let remainCandies = 12;
+                    for(let round = 1; round <= 3; round++) { for(let i = 1; i <= 4; i++) { await delay(400); if(!this.isPlaying) return; document.getElementById(`pl${i}`).innerText += "🍬"; remainCandies--; document.getElementById('candies').innerText = "🍬".repeat(remainCandies); } }
                     await delay(1500); if(!this.isPlaying) return; sub.innerText = "「糖果分完了，每個盤子都是 3 顆！ (12 ÷ 4 = 3)」";
+                } else if (island === "應用題島") {
+                    stage.style.background = "#FFF8E8"; stage.innerHTML = `<div style="width:80%; background:white; padding:20px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.1); margin: 30px auto; font-size:1.5rem; font-weight:bold; color:#2c3e50; line-height:1.6; text-align:left;">小明有 12 張貼紙，<span id="kw1" style="transition:0.5s; padding:2px 5px; border-radius:5px;">又拿了</span> 5 張，<span id="kw2" style="transition:0.5s; padding:2px 5px; border-radius:5px;">一共有</span>幾張貼紙？</div>`;
+                    sub.innerText = "「遇到文字很長的應用題，不用緊張...」"; await delay(2500); if(!this.isPlaying) return;
+                    sub.innerText = "「我們來找找裡面的『關鍵字』！」"; await delay(1500); if(!this.isPlaying) return;
+                    document.getElementById('kw1').style.background = "#fadbd8"; document.getElementById('kw1').style.border = "3px dashed #e74c3c"; document.getElementById('kw2').style.background = "#fadbd8"; document.getElementById('kw2').style.border = "3px dashed #e74c3c";
+                    await delay(2000); if(!this.isPlaying) return; sub.innerText = "「看到『又拿了』和『一共』，代表要把它們合起來！」"; await delay(3000); if(!this.isPlaying) return; sub.innerText = "「所以只要算 12 + 5 = 17 就對了！換你試試看！」";
                 } else if (island === "四則運算島") {
-                    stage.style.background = "#2c3e50";
-                    stage.innerHTML = `<div style="background:#34495e;width:100%;height:80px;position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:5px;"><div style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;">18</div><div style="color:white;font-size:2rem;font-weight:bold;">＋</div><div id="tc2" style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">4</div><div id="tc-mul" style="color:white;font-size:2rem;font-weight:bold;">×</div><div id="tc3" style="background:#f1c40f;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">3</div></div>`;
+                    stage.style.background = "#6C63B5"; stage.innerHTML = `<div style="background:#4E478C;width:100%;height:80px;position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;gap:5px;"><div style="background:#F5CB5C;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;">18</div><div style="color:white;font-size:2rem;font-weight:bold;">＋</div><div id="tc2" style="background:#F5CB5C;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">4</div><div id="tc-mul" style="color:white;font-size:2rem;font-weight:bold;">×</div><div id="tc3" style="background:#F5CB5C;font-size:2rem;font-weight:bold;padding:5px 15px;border-radius:10px;transition:0.5s;">3</div></div>`;
                     sub.innerText = "「神殿裡的運算，必須找出優先權！」"; await delay(2500); if(!this.isPlaying) return;
                     sub.innerText = "「沒有括號時，掃描並優先處理乘法或除法。」"; await delay(1500); if(!this.isPlaying) return;
-                    document.getElementById('tc2').style.border = "4px dashed #e74c3c"; document.getElementById('tc3').style.border = "4px dashed #e74c3c";
+                    document.getElementById('tc2').style.border = "4px dashed #F47C78"; document.getElementById('tc3').style.border = "4px dashed #F47C78";
                     await delay(2000); if(!this.isPlaying) return; sub.innerText = "「先算 4 乘以 3，得到 12。最後再加 18！」"; document.getElementById('tc2').innerText = "12"; document.getElementById('tc2').style.border = "none"; document.getElementById('tc-mul').style.display = "none"; document.getElementById('tc3').style.display = "none";
                 }
+                if (_an) _an.classList.add('is-visible');
             }
         };
 
-        function endAnimation() {
-            AnimationEngine.isPlaying = false;
-            document.getElementById('animation-view').style.display = 'none'; document.getElementById('interactive-view').style.display = 'flex';
-            GameFlowController.loadNextQuestion(); renderUI();
+        function endAnimation() { 
+            AnimationEngine.isPlaying = false; 
+            document.getElementById('animation-view').style.display = 'none'; 
+            const _an2 = document.getElementById('btn-anim-next'); if (_an2) _an2.classList.remove('is-visible');
+            GameFlowController.loadNextQuestion(); 
+            renderUI(); 
         }
+
+        // ==========================================
+        // 核心大腦 (🚨 完全修復 params 問題與語法錯誤)
+        // ==========================================
+        const WPDict = {
+            names: ["小明", "小華", "小美", "阿呆", "老師", "媽媽", "店長", "隊長"],
+            contexts: [ { theme: "fruit", items: ["蘋果", "橘子", "草莓"], units: ["顆", "箱", "籃"], pack: "裝" }, { theme: "stationery", items: ["鉛筆", "橡皮擦", "筆記本"], units: ["枝", "個", "本"], pack: "盒" }, { theme: "library", items: ["故事書", "繪本", "漫畫"], units: ["本", "疊", "櫃"], pack: "疊" } ],
+            getInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min, getItem: function(arr) { return arr[this.getInt(0, arr.length - 1)]; }
+        };
 
         const MathEngineV2 = {
             getRandomInt: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
-            generateQuestion: function(island, level) {
-                let q = { template_id: "", expression: "", correctAnswer: 0, params: {}, misconceptions: {} };
-                if (island === "加法島") {
-                    let a, b; if (level === 1) { a = this.getRandomInt(1, 8); b = this.getRandomInt(1, 9-a); } else if (level === 2) { a = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); b = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); } else { a = this.getRandomInt(15, 80); b = this.getRandomInt(1, 8)*10 + this.getRandomInt(10-(a%10), 9); if(a+b>99) b-=10; } 
-                    q.template_id = "ADD_BASIC"; q.params={a,b}; q.expression=`${a} + ${b}`; q.correctAnswer=a+b; q.misconceptions["ERR_ADD_CARRY_FORGOTTEN"] = (Math.floor(a/10)+Math.floor(b/10))*10 + ((a%10+b%10)%10);
-                } else if (island === "減法島") {
-                    let a, b; if (level === 1) { a = this.getRandomInt(2, 9); b = this.getRandomInt(1, a-1); } else if (level === 2) { a = this.getRandomInt(2, 5)*10 + this.getRandomInt(5, 9); b = this.getRandomInt(1, 2)*10 + this.getRandomInt(1, (a%10)-1); } else { a = this.getRandomInt(21, 98); b = this.getRandomInt(1, Math.floor(a/10)-1)*10 + this.getRandomInt((a%10)+1, 9); } 
-                    q.template_id = "SUB_BASIC"; q.params={a,b}; q.expression=`${a} - ${b}`; q.correctAnswer=a-b; q.misconceptions["ERR_SUB_REVERSE_DIGIT"] = (Math.floor(a/10)-Math.floor(b/10))*10 + Math.abs((b%10)-(a%10));
-                } else if (island === "乘法島") {
-                    let a, b; if (level === 1) { a = this.getRandomInt(2, 4); b = this.getRandomInt(2, 4); } else if (level === 2) { a = this.getRandomInt(3, 6); b = this.getRandomInt(3, 6); } else { a = this.getRandomInt(6, 9); b = this.getRandomInt(6, 9); }
-                    q.template_id = "MUL_BASIC"; q.params={a,b}; q.expression=`${a} × ${b}`; q.correctAnswer=a*b;
-                } else if (island === "除法島") {
-                    let b, ans, a; if (level === 1) { b = this.getRandomInt(2, 4); ans = this.getRandomInt(2, 4); } else if (level === 2) { b = this.getRandomInt(3, 6); ans = this.getRandomInt(3, 7); } else { b = this.getRandomInt(6, 9); ans = this.getRandomInt(5, 9); }
-                    a = b * ans; q.template_id = "DIV_BASIC"; q.params={a,b}; q.expression=`${a} ÷ ${b}`; q.correctAnswer=ans;
-                } else {
-                    let t = (level <= 2) ? "LR_AS" : ["MD_FIRST", "PAREN_AS_SUB", "LR_MD"][this.getRandomInt(0, 2)];
-                    q.template_id = t;
-                    if(t === "LR_AS") { let a = this.getRandomInt(10, 30), b = this.getRandomInt(1, a), c = this.getRandomInt(1, 20); q.params={a,b,c}; q.expression=`${a} - ${b} + ${c}`; q.correctAnswer=a-b+c; q.misconceptions["ERR_LEFT_TO_RIGHT_AS"] = a-(b+c); } 
-                    else if (t === "MD_FIRST") { let b = this.getRandomInt(2, 9), c = this.getRandomInt(2, 9), a = this.getRandomInt(10, 50), d = this.getRandomInt(0, a+(b*c)); q.params={a,b,c,d}; q.expression=`${a} + ${b} × ${c} - ${d}`; q.correctAnswer=a+(b*c)-d; q.misconceptions["ERR_ORDER_ADD_FIRST"] = (a+b)*c-d; } 
-                    else if (t === "PAREN_AS_SUB") { let c = this.getRandomInt(2, 9), b = this.getRandomInt(10, 50), a = b + this.getRandomInt(2, 12); q.params={a,b,c}; q.expression=`( ${a} - ${b} ) × ${c}`; q.correctAnswer=(a-b)*c; q.misconceptions["ERR_PAREN_IGNORED"] = a-b*c; } 
-                    else if (t === "LR_MD") { let b2 = this.getRandomInt(2, 9), c2 = this.getRandomInt(2, 9), a2 = this.getRandomInt(2, 12)*b2; q.params={a:a2,b:b2,c:c2}; q.expression=`${a2} ÷ ${b2} × ${c2}`; q.correctAnswer=(a2/b2)*c2; q.misconceptions["ERR_LEFT_TO_RIGHT_MD"] = a2/(b2*c2); }
+            generateQuestion: function(islandCode, level) {
+                let island = ISLAND_ALIASES[islandCode] || islandCode;
+                let q = { template_id: "", expression: "", correctAnswer: 0, params: {}, misconceptions: {}, storyText: "" };
+                let attempts = 0; let valid = false;
+
+                while (!valid && attempts < 30) {
+                    attempts++;
+                    try {
+                        if (island === "應用題島") {
+                            q.template_id = "WORD_PROBLEM"; let type = this.getRandomInt(1, 4);
+                            if (type === 1) { let a = this.getRandomInt(5, 40), b = this.getRandomInt(5, 40); q.storyText = `小明有 ${a} 顆糖果，又拿了 ${b} 顆，一共有幾顆糖果？`; q.correctAnswer = a + b; q.params = { a, b, keywords: ["又拿了", "一共"], op: "+" }; q.misconceptions["ERR_WRONG_OP"] = Math.abs(a - b); } 
+                            else if (type === 2) { let a = this.getRandomInt(20, 50), b = this.getRandomInt(5, a-1); q.storyText = `桌上有 ${a} 塊餅乾，被拿走 ${b} 塊，還剩下幾塊？`; q.correctAnswer = a - b; q.params = { a, b, keywords: ["拿走", "剩下"], op: "-" }; q.misconceptions["ERR_WRONG_OP"] = a + b; } 
+                            else if (type === 3) { let a = this.getRandomInt(3, 9), b = this.getRandomInt(3, 9); q.storyText = `一盒巧克力有 ${a} 顆，買了 ${b} 盒，共有幾顆巧克力？`; q.correctAnswer = a * b; q.params = { a, b, keywords: ["一盒", "共有"], op: "*" }; q.misconceptions["ERR_WRONG_OP"] = a + b; } 
+                            else if (type === 4) { let b = this.getRandomInt(3, 8), ans = this.getRandomInt(3, 8), a = b * ans; q.storyText = `老師有 ${a} 張貼紙，平分給 ${b} 個人，每人分到幾張？`; q.correctAnswer = ans; q.params = { a, b, keywords: ["平分", "每人分到"], op: "/" }; q.misconceptions["ERR_WRONG_OP"] = Math.abs(a - b); }
+                            q.expression = q.storyText;
+                        } 
+                        else if (island === "加法島") { let a, b; if (level === 1) { a = this.getRandomInt(1, 8); b = this.getRandomInt(1, 9-a); } else if (level === 2) { a = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); b = this.getRandomInt(1, 4)*10 + this.getRandomInt(1, 4); } else { a = this.getRandomInt(15, 80); b = this.getRandomInt(1, 8)*10 + this.getRandomInt(10-(a%10), 9); if(a+b>99) b-=10; } q.template_id = "ADD_BASIC"; q.params={a,b}; q.expression=`${a} + ${b}`; q.correctAnswer=a+b; q.misconceptions["ERR_ADD_CARRY_FORGOTTEN"] = (Math.floor(a/10)+Math.floor(b/10))*10 + ((a%10+b%10)%10); } 
+                        else if (island === "減法島") { let a, b; if (level === 1) { a = this.getRandomInt(2, 9); b = this.getRandomInt(1, a-1); } else if (level === 2) { a = this.getRandomInt(2, 5)*10 + this.getRandomInt(5, 9); b = this.getRandomInt(1, 2)*10 + this.getRandomInt(1, (a%10)-1); } else { a = this.getRandomInt(21, 98); b = this.getRandomInt(1, Math.floor(a/10)-1)*10 + this.getRandomInt((a%10)+1, 9); } q.template_id = "SUB_BASIC"; q.params={a,b}; q.expression=`${a} - ${b}`; q.correctAnswer=a-b; q.misconceptions["ERR_SUB_REVERSE_DIGIT"] = (Math.floor(a/10)-Math.floor(b/10))*10 + Math.abs((b%10)-(a%10)); } 
+                        else if (island === "乘法島") { let a, b; if (level === 1) { a = this.getRandomInt(2, 4); b = this.getRandomInt(2, 4); } else if (level === 2) { a = this.getRandomInt(3, 6); b = this.getRandomInt(3, 6); } else { a = this.getRandomInt(6, 9); b = this.getRandomInt(6, 9); } q.template_id = "MUL_BASIC"; q.params={a,b}; q.expression=`${a} × ${b}`; q.correctAnswer=a*b; } 
+                        else if (island === "除法島") { let b, ans, a; if (level === 1) { b = this.getRandomInt(2, 4); ans = this.getRandomInt(2, 4); } else if (level === 2) { b = this.getRandomInt(3, 6); ans = this.getRandomInt(3, 7); } else { b = this.getRandomInt(6, 9); ans = this.getRandomInt(5, 9); } a = b * ans; q.template_id = "DIV_BASIC"; q.params={a,b}; q.expression=`${a} ÷ ${b}`; q.correctAnswer=ans; } 
+                        else {
+                            let t = (level <= 2) ? "LR_AS" : ["MD_FIRST", "PAREN_AS_SUB", "LR_MD"][this.getRandomInt(0, 2)]; q.template_id = t;
+                            if(t === "LR_AS") { let a = this.getRandomInt(10, 30), b = this.getRandomInt(1, a), c = this.getRandomInt(1, 20); q.params={a,b,c}; q.expression=`${a} - ${b} + ${c}`; q.correctAnswer=a-b+c; q.misconceptions["ERR_LEFT_TO_RIGHT_AS"] = a-(b+c); } 
+                            else if (t === "MD_FIRST") { let b = this.getRandomInt(2, 9), c = this.getRandomInt(2, 9), a = this.getRandomInt(10, 50), d = this.getRandomInt(0, a+(b*c)); q.params={a,b,c,d}; q.expression=`${a} + ${b} × ${c} - ${d}`; q.correctAnswer=a+(b*c)-d; q.misconceptions["ERR_ORDER_ADD_FIRST"] = (a+b)*c-d; } 
+                            else if (t === "PAREN_AS_SUB") { let c = this.getRandomInt(2, 9), b = this.getRandomInt(10, 50), a = b + this.getRandomInt(2, 12); q.params={a,b,c}; q.expression=`( ${a} - ${b} ) × ${c}`; q.correctAnswer=(a-b)*c; q.misconceptions["ERR_PAREN_IGNORED"] = a-b*c; } 
+                            else if (t === "LR_MD") { let b2 = this.getRandomInt(2, 9), c2 = this.getRandomInt(2, 9), a2 = this.getRandomInt(2, 12)*b2; q.params={a:a2,b:b2,c:c2}; q.expression=`${a2} ÷ ${b2} × ${c2}`; q.correctAnswer=(a2/b2)*c2; q.misconceptions["ERR_LEFT_TO_RIGHT_MD"] = a2/(b2*c2); }
+                        }
+                        if (q.correctAnswer >= 0) valid = true;
+                    } catch(e) { console.error(e); }
                 }
-                return q;
+                if(!valid) { q.template_id = "FALLBACK"; q.expression = "10 + 10"; q.correctAnswer = 20; q.params={a:10, b:10}; }
+                q.fingerprint = `${q.template_id}_${Object.values(q.params).join("_")}`; return q;
             },
-            diagnoseError: function(q, sAns) {
-                let ans = parseFloat(sAns);
+            diagnoseError: function(q, op, ansStr) {
+                let ans = parseFloat(ansStr);
+                if (q.template_id === "WORD_PROBLEM") {
+                    if (!op || isNaN(ans)) return { isCorrect: false, errorCode: "ERR_INPUT_EMPTY", message: "請先選擇方法並輸入答案喔！" };
+                    if (op === q.params.op && ans === q.correctAnswer) return { isCorrect: true, errorCode: "CORRECT", message: "🎉 太棒了！方法和答案都正確！" };
+                    if (op !== q.params.op) {
+                        let m = "⚠️ 你是不是用錯方法了？";
+                        if(q.params.op==="+") m="⚠️ 題目說「又拿了」或「合起來」，東西會變多喔！"; if(q.params.op==="-") m="⚠️ 題目說「拿走」或「剩下」，東西會變少喔！";
+                        if(q.params.op==="*") m="⚠️ 題目問「共有幾個」，而且每一組都一樣多喔！"; if(q.params.op==="/") m="⚠️ 題目說「平分給」，遇到平分要用什麼方法呢？";
+                        return { isCorrect: false, errorCode: "ERR_WRONG_OP", message: m };
+                    }
+                    return { isCorrect: false, errorCode: "ERR_CALCULATION", message: "👍 方法選對了！但數字算錯了，再重算一次！" };
+                }
                 if (isNaN(ans)) return { isCorrect: false, errorCode: "ERR_INPUT_EMPTY", message: "請輸入答案喔！" };
-                if (ans === q.correctAnswer) return { isCorrect: true, errorCode: "CORRECT", message: "太棒了！計算完全正確！" };
+                if (ans === q.correctAnswer) return { isCorrect: true, errorCode: "CORRECT", message: "🎉 太棒了！計算完全正確！" };
                 for (const [code, val] of Object.entries(q.misconceptions)) {
                     if (ans === val) {
                         let msg = "⚠️ 觀念有點小錯誤喔！";
@@ -520,46 +826,89 @@
                         return { isCorrect: false, errorCode: code, message: msg };
                     }
                 }
-                return { isCorrect: false, errorCode: "ERR_UNKNOWN", message: "🤔 系統猜不到你是怎麼算的...\n請再仔細檢查一下再試試看喔！" };
+                // 🚨 此處已修復 isCorrect 空白語法錯誤
+                return { isCorrect: false, errorCode: "ERR_UNKNOWN", message: "🤔 系統猜不到你是怎麼算的...\n請仔細檢查一下再試試看喔！" };
             }
         };
 
+        // ==========================================
+        // UI 狀態控制與流程
+        // ==========================================
         const GameFlowController = {
             state: { island: "", zone: "LEARNING", qIndex: 1, totalQ: 3, currentQ: null, attempts: 0, firstTryCorrects: 0, stars: 0 },
-            startIsland: function(island, startZone) { this.state.island = island; this.state.stars = 0; this.enterZone(startZone || "LEARNING"); },
+            startIsland: function(islandCode, startZone) { this.state.island = ISLAND_ALIASES[islandCode] || islandCode; this.state.stars = 0; this.enterZone(startZone || "LEARNING"); },
             enterZone: function(z) { this.state.zone = z; this.state.qIndex = 1; this.state.attempts = 0; this.state.firstTryCorrects = 0; this.state.totalQ = (z === "LEARNING") ? 3 : (z === "PRACTICE" ? 10 : 5); },
             loadNextQuestion: function() { 
-                this.state.attempts = 0; 
-                let lv = 1; if(this.state.zone === "PRACTICE") lv = (this.state.qIndex <= 5) ? 2 : 3; else if(this.state.zone === "MASTERY") lv = 4;
+                this.state.attempts = 0; let lv = 1; if(this.state.zone === "PRACTICE") lv = (this.state.qIndex <= 5) ? 2 : 3; else if(this.state.zone === "MASTERY") lv = 4;
                 this.state.currentQ = MathEngineV2.generateQuestion(this.state.island, lv); 
             },
-            submitAnswer: function(ans) {
-                this.state.attempts++;
-                let diag = MathEngineV2.diagnoseError(this.state.currentQ, ans);
+            submitAnswer: function(ans, op) {
+                if (this.state.island !== "應用題島") { op = null; } this.state.attempts++;
+                let diag = MathEngineV2.diagnoseError(this.state.currentQ, op, ans);
                 let res = { isCorrect: diag.isCorrect, msg: diag.message, hintLvl: 0, nextAct: "RETRY", errCode: diag.errorCode, earnedStars: 0 };
                 
                 if (diag.isCorrect) {
                     if(this.state.attempts === 1) this.state.firstTryCorrects++; 
                     if (this.state.qIndex < this.state.totalQ) { this.state.qIndex++; res.nextAct = "NEXT_Q"; } 
                     else {
-                        let rate = this.state.firstTryCorrects / this.state.totalQ;
-                        let earned = 0;
-                        if(rate >= 0.9) earned = 3; else if(rate >= 0.8) earned = 2; else if(rate >= 0.7) earned = 1;
-                        this.state.stars += earned;
-                        res.earnedStars = earned; 
+                        let rate = this.state.firstTryCorrects / this.state.totalQ; let earned = rate >= 0.9 ? 3 : (rate >= 0.8 ? 2 : (rate >= 0.7 ? 1 : 0));
+                        this.state.stars += earned; res.earnedStars = earned; 
                         
                         let recordObj = { stars: earned, accuracy: Math.round(rate * 100), date: new Date().toLocaleString('zh-TW', {month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit'}) };
                         if(!currentUser.progress[this.state.island]) currentUser.progress[this.state.island] = { LEARNING: [], PRACTICE: [], MASTERY: [] };
                         currentUser.progress[this.state.island][this.state.zone].push(recordObj);
                         
-                        res.nextAct = "FINISH"; 
-                        res.msg = `🎉 完成本區挑戰！\n答對率 ${Math.round(rate*100)}%，獲得 ${earned} 顆星！\n點擊下方按鈕儲存成績！`;
+                        res.nextAct = "FINISH"; res.msg = `🎉 完成本區挑戰！\n答對率 ${Math.round(rate*100)}%，獲得 ${earned} 顆星！`;
                     }
                 } else {
                     res.hintLvl = this.state.attempts >= 3 ? 3 : this.state.attempts;
-                    if(res.hintLvl === 2 && this.state.zone !== "MASTERY") res.msg += "\n💡 提示：請特別注意紅色閃爍的地方！";
+                    if(res.hintLvl === 2 && this.state.zone !== "MASTERY") res.msg += (this.state.island === "應用題島") ? "\n💡 提示：請注意紅框標示的關鍵字！" : "\n💡 提示：請特別注意紅色閃爍的地方！";
+                    if(res.hintLvl === 3 && this.state.island === "應用題島" && this.state.zone !== "MASTERY") { let opName = {"+":"加法", "-":"減法", "*":"乘法", "/":"除法"}[this.state.currentQ.params.op]; res.msg += `\n💡 提示：看到這些關鍵字，代表要用【${opName}】喔！`; }
+                } return res;
+            }
+        };
+
+        const WordProblemUI = {
+            selectedOp: null,
+            render: function(q) {
+                this.selectedOp = null; document.querySelectorAll('.btn-op').forEach(btn => btn.classList.remove('selected'));
+                let ansBox = document.getElementById('wp-answer-input'); ansBox.value = ""; ansBox.disabled = false; ansBox.classList.remove('apply-shake');
+                document.getElementById('wp-unit-label').innerText = q.unit || "個";
+                showWordProblemNextAction("RESET");
+                document.getElementById('wp-story-text').innerHTML = `<span class="word-problem-text" id="wp-content">${q.expression}</span>`;
+                let fb = document.getElementById('wp-feedback'); fb.className = "feedback-bubble info"; fb.innerText = "🤖 請先判斷要用什麼方法，再算出答案！";
+            },
+            selectOp: function(op) { if(document.getElementById('wp-answer-input').disabled) return; this.selectedOp = op; document.querySelectorAll('.btn-op').forEach(b => b.classList.remove('selected')); let idMap = {"+":"op-add", "-":"op-sub", "*":"op-mul", "/":"op-div"}; document.getElementById(idMap[op]).classList.add('selected'); },
+            speakQuestion: function() { if ('speechSynthesis' in window) { let msg = new SpeechSynthesisUtterance(GameFlowController.state.currentQ.expression); msg.lang = 'zh-TW'; msg.rate = 0.9; window.speechSynthesis.speak(msg); } else alert("⚠️ 您的瀏覽器不支援語音功能喔！"); },
+            submit: async function() {
+                let ans = document.getElementById('wp-answer-input').value.trim(); let op = this.selectedOp;
+                if (!op || ans === "") { let fb = document.getElementById('wp-feedback'); fb.className = "feedback-bubble error"; fb.innerText = "⚠️ 請先選擇一個方法，並輸入答案喔！"; EffectEngine.shakeElement('wp-answer-input'); return; }
+                
+                let s = GameFlowController.state; let res = GameFlowController.submitAnswer(ans, op);
+                let fb = document.getElementById('wp-feedback'); fb.className = "feedback-bubble " + (res.isCorrect ? "success" : "error"); fb.innerText = res.msg;
+
+                if (!res.isCorrect) {
+                    EffectEngine.shakeElement('wp-answer-input');
+                    if (res.hintLvl >= 2) {
+                        let content = s.currentQ.expression; s.currentQ.params.keywords.forEach(kw => { content = content.replace(kw, `<span class="highlight-hint">${kw}</span>`); });
+                        document.getElementById('wp-story-text').innerHTML = `<span class="word-problem-text">${content}</span>`;
+                    }
+                } else {
+                    document.getElementById('wp-answer-input').disabled = true;
+                    showWordProblemNextAction(res.nextAct);
+                    if (res.earnedStars > 0) { await EffectEngine.flyStar(); if(currentUser) currentUser.total_stars += res.earnedStars; }
                 }
-                return res;
+
+                if(currentUser) {
+                    let opZhMap = {"+":"＋", "-":"－", "*":"×", "/":"÷"};
+                    // 🌟 確保應用題的算式組合使用 .params
+                    let opZh = opZhMap[op] || "？"; let formatEq = `${s.currentQ.params.a} ${opZh} ${s.currentQ.params.b} = ${ans}`;
+                    
+                    let payload = { action: 'submit_answer', username: currentUser.username, user_id: currentUser.user_id, island: s.island, template_id: s.currentQ.template_id, question_fingerprint: s.currentQ.fingerprint, question_text: `[應用題] ${s.currentQ.expression}`, student_answer: formatEq, is_correct: res.isCorrect, attempt_count: s.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg };
+                    if (res.isCorrect && (res.nextAct === "FINISH" || res.nextAct === "NEXT_ZONE")) { payload.update_stars = currentUser.total_stars; payload.update_progress = currentUser.progress; }
+                    
+                    try { apiCall(payload); } catch(e) { console.error("[SAVE_ANSWER_ERROR]", e); }
+                }
             }
         };
 
@@ -567,171 +916,167 @@
         function typeNum(val) { if(val === 'C') uiInput.value = ""; else if(val === '<') uiInput.value = uiInput.value.slice(0, -1); else uiInput.value += val; }
 
         function renderUI() {
-            let s = GameFlowController.state;
-            document.getElementById('ui-zone').innerText = `${s.zone === "LEARNING" ? "概念學習區" : (s.zone === "PRACTICE" ? "適性練習區" : "掌握確認區")} ( 第 ${s.qIndex} / ${s.totalQ} 題 )`;
+            let s = GameFlowController.state; let zoneZh = s.zone === "LEARNING" ? "概念學習區" : (s.zone === "PRACTICE" ? "適性練習區" : "掌握確認區");
             document.getElementById('ui-island-stars').innerText = s.stars;
-            uiInput.value = ""; uiInput.disabled = false;
-            document.getElementById('btn-submit').style.display = 'block'; document.getElementById('btn-next').style.display = 'none'; document.getElementById('btn-finish').style.display = 'none';
-            uiExpr.innerHTML = s.currentQ.expression.split(" ").map((p, idx) => `<span id="expr-part-${idx}">${p}</span>`).join("");
+            
+            let pathHTML = "";
+            for(let i=1; i<=s.totalQ; i++) {
+                if(i < s.qIndex) pathHTML += `<div class="progress-node completed">✔</div>`; else if(i === s.qIndex) pathHTML += `<div class="progress-node active">${i}</div>`; else pathHTML += `<div class="progress-node">${i}</div>`;
+                if(i < s.totalQ) { let lineClass = (i < s.qIndex) ? "completed" : ""; pathHTML += `<div class="progress-line ${lineClass}"></div>`; }
+            }
+            document.getElementById('ui-progress-path').innerHTML = pathHTML;
+
+            if (s.island === "應用題島") {
+                document.getElementById('interactive-view').style.display = 'none'; document.getElementById('word-problem-view').style.display = 'flex';
+                document.querySelector('#word-problem-view .badge-pill').innerText = zoneZh;
+                WordProblemUI.render(s.currentQ);
+            } else {
+                document.getElementById('word-problem-view').style.display = 'none'; document.getElementById('interactive-view').style.display = 'flex';
+                document.getElementById('ui-zone-badge-basic').innerText = zoneZh;
+                uiInput.value = ""; uiInput.disabled = false; uiInput.classList.remove('apply-shake');
+                showBasicNextAction("RESET");
+                uiExpr.innerHTML = s.currentQ.expression.split(" ").map((p, idx) => `<span id="expr-part-${idx}">${p}</span>`).join("");
+                uiFeedback.className = "feedback-bubble info"; uiFeedback.innerText = "🤖 請算出紙卡上的答案！";
+            }
         }
 
-        function submitAns() {
-            if(uiInput.value === "") return;
+        async function submitAns() {
+            if(uiInput.value === "") { uiFeedback.className = "feedback-bubble error"; uiFeedback.innerText = "⚠️ 請輸入答案喔！"; EffectEngine.shakeElement('ui-input'); return; }
             let qStr = GameFlowController.state.currentQ.expression;
             let res = GameFlowController.submitAnswer(uiInput.value);
-            
-            uiFeedback.innerText = res.msg; uiFeedback.className = "feedback " + (res.isCorrect ? "success" : "error");
+            uiFeedback.innerText = res.msg; uiFeedback.className = "feedback-bubble " + (res.isCorrect ? "success" : "error");
 
-            if (!res.isCorrect && res.hintLvl >= 2) {
-                let qType = GameFlowController.state.currentQ.template_id;
-                if(qType.includes("BASIC")) document.getElementById('expr-part-1').classList.add('highlight-hint');
-                else if (qType === "MD_FIRST") [2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
-                else if (qType === "PAREN_AS_SUB") [0,1,2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
-                else if (qType === "LR_MD" || qType === "LR_AS") [0,1,2].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
-            }
-
-            if (res.isCorrect) {
-                if (res.earnedStars > 0 && currentUser) { currentUser.total_stars += res.earnedStars; }
-                if(currentUser) {
-                    let updateStars = (res.nextAct === "FINISH") ? currentUser.total_stars : undefined;
-                    let updateProg = (res.nextAct === "FINISH") ? currentUser.progress : undefined;
-                    apiCall({ action: 'submit_answer', username: currentUser.username, island: GameFlowController.state.island, question_text: qStr, student_answer: uiInput.value, is_correct: res.isCorrect, attempt_count: GameFlowController.state.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg, update_stars: updateStars, update_progress: updateProg });
+            if (!res.isCorrect) {
+                EffectEngine.shakeElement('ui-input'); 
+                if (res.hintLvl >= 2) {
+                    let qType = GameFlowController.state.currentQ.template_id;
+                    if(qType.includes("BASIC")) document.getElementById('expr-part-1').classList.add('highlight-hint');
+                    else if (qType === "MD_FIRST") [2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
+                    else if (qType === "PAREN_AS_SUB") [0,1,2,3,4].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
+                    else if (qType === "LR_MD" || qType === "LR_AS") [0,1,2].forEach(i => document.getElementById(`expr-part-${i}`).classList.add('highlight-hint'));
                 }
-                uiInput.disabled = true; document.getElementById('btn-submit').style.display = 'none';
-                if (res.nextAct === "FINISH") document.getElementById('btn-finish').style.display = 'block';
-                else document.getElementById('btn-next').style.display = 'block';
             } else {
-                if(currentUser) apiCall({ action: 'submit_answer', username: currentUser.username, island: GameFlowController.state.island, question_text: qStr, student_answer: uiInput.value, is_correct: false, attempt_count: GameFlowController.state.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg });
+                uiInput.disabled = true;
+                showBasicNextAction(res.nextAct);
+                if (res.earnedStars > 0) { await EffectEngine.flyStar(); if (currentUser) currentUser.total_stars += res.earnedStars; }
+            }
+
+            if(currentUser) {
+                let payload = { action: 'submit_answer', username: currentUser.username, user_id: currentUser.user_id, island: GameFlowController.state.island, template_id: GameFlowController.state.currentQ.template_id, question_fingerprint: GameFlowController.state.currentQ.fingerprint, question_text: qStr, student_answer: uiInput.value, is_correct: res.isCorrect, attempt_count: GameFlowController.state.attempts, hint_level: res.hintLvl, error_code: res.errCode, error_diagnosis: res.msg };
+                if (res.isCorrect && (res.nextAct === "FINISH" || res.nextAct === "NEXT_ZONE")) { payload.update_stars = currentUser.total_stars; payload.update_progress = currentUser.progress; }
+                try { apiCall(payload); } catch(e) { console.error("[SAVE_ANSWER_ERROR]", e); }
             }
         }
 
-        function nextQ() {
-            uiFeedback.className = "feedback info"; uiFeedback.innerText = "🤖 請算出黑板上的答案！"; uiInput.placeholder = "?";
-            GameFlowController.loadNextQuestion(); renderUI();
-        }
+        function nextQ() { GameFlowController.loadNextQuestion(); renderUI(); }
 
         // ==========================================
-        // 🧑‍🏫 教師端邏輯
+        // 🧑‍🏫 教師戰情室 (保留並加上 XSS 防護)
         // ==========================================
+        function escapeCSV(val) { if (val == null) return ""; let str = String(val); if (/^[=+\-@]/.test(str)) str = "'" + str; if (/[",\n\r]/.test(str)) str = '"' + str.replace(/"/g, '""') + '"'; return str; }
+        
+        function formatTaipeiDateTime(value) {
+            if (!value) return "尚未登入";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "時間格式異常";
+            return new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+        }
+
+        function exportCSV() {
+            if (globalLogs.length === 0) return alert("目前沒有作答明細可匯出！");
+            let csvContent = "\uFEFF學生帳號,暱稱,島嶼,題型代碼,題目內容,學生答案,正確答案,是否答對,錯誤代碼,使用提示等級,嘗試次數,作答時間,資料狀態\n";
+            let userMap = {}; globalUsers.forEach(u => userMap[u.user_id || u.username] = u.nickname);
+            globalLogs.forEach(log => {
+                let nickname = log.nickname_snapshot || userMap[log.user_id || log.username] || "未知學生"; let dateStr = (log.timestamp || log.answered_at) ? new Date(log.timestamp || log.answered_at).toLocaleString('zh-TW') : "";
+                let row = [ log.username, nickname, log.island || "", log.template_id || "", log.question_text || "", log.student_answer || "", log.correct_answer || "", log.is_correct ? "是" : "否", log.error_code || "", log.hint_level || "0", log.attempt_count || log.attempt_number || "1", dateStr, log.data_status || "正常" ];
+                csvContent += row.map(escapeCSV).join(",") + "\n";
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); const url = URL.createObjectURL(blob); let timeStr = new Date().toISOString().slice(0,10).replace(/-/g,"");
+            link.setAttribute("href", url); link.setAttribute("download", `數學彩虹群島_作答明細_${timeStr}.csv`); link.style.visibility = 'hidden'; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+        }
+
         async function doAdminAuth() {
-            const pwd = document.getElementById('admin-pwd').value;
-            if(!pwd) return;
-            
+            const pwd = document.getElementById('admin-pwd').value; 
+            if (!pwd) { alert("請輸入教師密碼！"); return; }
             document.getElementById('admin-error-msg').innerText = "";
-            
-            if(GAS_URL.includes("請換成")) {
-                enableDemoMode("尚未設定後端網址");
-                return;
-            }
-
+            if(GAS_URL.includes("請換成")) { enableDemoMode(); return; }
             document.getElementById('loading').style.display = 'flex';
             try {
-                const res = await apiCall({ action: 'get_admin_data', password: pwd });
-                document.getElementById('loading').style.display = 'none';
-
-                if (res.status === 'error') {
-                    document.getElementById('admin-error-msg').innerText = "⚠️ " + res.message;
-                    return;
-                }
-                globalUsers = res.users || []; globalLogs = res.logs || [];
-                renderAdminDashboard();
-            } catch (err) {
-                console.error(err);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('admin-error-msg').innerHTML = `連線失敗，請檢查網址或網路！<br><br><button onclick="enableDemoMode('網路連線失敗')" class="btn" style="background:#f39c12;">開啟畢展展示模式</button>`;
-            }
+                const res = await apiCall({ action: 'get_admin_data', password: pwd }); document.getElementById('loading').style.display = 'none';
+                if (res.status === 'error') { document.getElementById('admin-error-msg').innerText = "⚠️ " + res.message; return; }
+                globalUsers = res.users || []; globalLogs = res.logs || []; renderAdminDashboard();
+            } catch (err) { console.error(err); document.getElementById('loading').style.display = 'none'; document.getElementById('admin-error-msg').innerHTML = `連線失敗，請檢查網址或網路！<br><br><button onclick="enableDemoMode()" class="btn-game btn-primary" style="margin-top:10px;">開啟畢展展示模式</button>`; }
         }
 
-        function enableDemoMode(reason) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('dashboard-title').innerText = "📊 班級學習分析儀表板 (展示模式)";
-            globalUsers = [
-                { username: "S01", nickname: "王小明", total_stars: 12, last_updated: new Date().toISOString(), current_progress: JSON.stringify({"加法島":{"LEARNING":[{"stars":3,"accuracy":100,"date":"2026/10/25 10:00"}],"PRACTICE":[{"stars":2,"accuracy":80,"date":"2026/10/25 10:15"}]}}) },
-                { username: "S02", nickname: "李小華", total_stars: 5, last_updated: new Date().toISOString(), current_progress: JSON.stringify({}) }
-            ];
-            globalLogs = [
-                { username: "S02", hint_level: 3, is_correct: false, island: "四則運算島", question_text: "15 + 4 × 3", student_answer: "57", error_code: "ERR_ORDER_ADD_FIRST", error_diagnosis: "必須先乘除，後加減！" },
-                { username: "S02", hint_level: 2, is_correct: false, island: "加法島", question_text: "18 + 15", student_answer: "23", error_code: "ERR_ADD_CARRY_FORGOTTEN", error_diagnosis: "個位滿十要向十位進 1！" }
-            ];
+        async function refreshAdminData() {
+            const pwd = document.getElementById('admin-pwd').value || "admin888"; 
+            if (!pwd) { alert("請重新登入教師端！"); return; }
+            if (GAS_URL.includes("請換成")) return;
+            const btn = document.getElementById('btn-admin-refresh'); btn.innerText = "⏳ 更新中..."; btn.disabled = true;
+            try {
+                const res = await fetch(GAS_URL, { method: 'POST', cache: 'no-store', body: JSON.stringify({ action: 'get_admin_data', password: pwd }) });
+                const data = await res.json();
+                if (data.status === 'success') { globalUsers = data.users || []; globalLogs = data.logs || []; renderAdminDashboard(); }
+            } catch (error) { console.error("更新資料失敗:", error); } finally { btn.innerText = "🔄 重新整理資料"; btn.disabled = false; }
+        }
+
+        function enableDemoMode() {
+            document.getElementById('loading').style.display = 'none'; document.getElementById('dashboard-title').innerText = "📊 班級學習分析儀表板 (展示模式)";
+            globalUsers = [ { user_id:"USR_01", username: "S01", nickname: "王小明", total_stars: 12, last_login_at: new Date().toISOString(), current_progress: JSON.stringify({"應用題島":{"LEARNING":[{"stars":3,"accuracy":100,"date":"2026/10/25 10:00"}]}}) } ];
+            globalLogs = [ { user_id:"USR_01", username: "S01", hint_level: 3, is_correct: false, island: "應用題島", question_text: "[應用題] 老師有 24 張貼紙，平分給 4 個人，每人分到幾張？", student_answer: "24 － 4 = 20", error_code: "ERR_WRONG_OP", error_diagnosis: "你是不是用錯方法(加減乘除)了呢？", timestamp: new Date().toISOString() } ];
             renderAdminDashboard();
         }
 
         function renderAdminDashboard() {
-            switchScreen('screen-admin-dashboard');
-            const warningCounts = {};
-            globalLogs.forEach(log => { if (log.hint_level >= 2) warningCounts[log.username] = (warningCounts[log.username] || 0) + 1; });
-
-            const stuBody = document.getElementById('students-list');
-            const warnBody = document.getElementById('warning-list');
-            stuBody.innerHTML = ''; warnBody.innerHTML = '';
-
+            switchScreen('screen-admin-dashboard'); const warningCounts = {}; globalLogs.forEach(log => { if (log.hint_level >= 2) warningCounts[log.user_id || log.username] = (warningCounts[log.user_id || log.username] || 0) + 1; });
+            const stuBody = document.getElementById('students-list'); const warnBody = document.getElementById('warning-list'); stuBody.innerHTML = ''; warnBody.innerHTML = '';
             globalUsers.forEach(u => {
-                let dateStr = "尚未登入";
-                if (u.last_updated) { let d = new Date(u.last_updated); if (!isNaN(d.getTime())) dateStr = d.toLocaleString('zh-TW'); }
-                
-                stuBody.innerHTML += `<tr><td>${u.username}</td><td>${u.nickname}</td><td style="color:#f39c12; font-weight:bold;">⭐ ${u.total_stars || 0}</td><td>${dateStr}</td><td><button class="btn-view" onclick="openAdminModal('${u.username}')">🔍 查看分析</button></td></tr>`;
-                
-                if (warningCounts[u.username] && warningCounts[u.username] >= 3) {
-                    warnBody.innerHTML += `<tr><td>${u.username}</td><td>${u.nickname}</td><td><span class="warning">⚠️ 嚴重卡關 ${warningCounts[u.username]} 次</span></td></tr>`;
-                }
+                const rawLastLogin = u.last_login_at ?? u.lastLoginAt ?? u.last_login ?? u.login_time ?? u.last_updated ?? null;
+                let dateStr = formatTaipeiDateTime(rawLastLogin);
+                let uniqueId = u.user_id || u.username;
+                stuBody.innerHTML += `<tr><td>${escapeHTML(u.username)}</td><td>${escapeHTML(u.nickname)}</td><td style="color:#f39c12; font-weight:bold;">⭐ ${u.total_stars || 0}</td><td>${dateStr}</td><td><button class="btn-view" onclick="openAdminModal('${uniqueId}')">🔍 查看分析</button></td></tr>`;
+                if (warningCounts[uniqueId] && warningCounts[uniqueId] >= 3) { warnBody.innerHTML += `<tr><td>${escapeHTML(u.username)}</td><td>${escapeHTML(u.nickname)}</td><td><span class="warning">⚠️ 嚴重卡關 ${warningCounts[uniqueId]} 次</span></td></tr>`; }
             });
-            if (warnBody.innerHTML === '') warnBody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:#7f8c8d;">🎉 目前全班沒有嚴重卡關的學生！</td></tr>';
+            if (warnBody.innerHTML === '') warnBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#7f8c8d;">🎉 目前全班沒有嚴重卡關的學生！</td></tr>';
         }
 
-        function openAdminModal(username) {
-            const user = globalUsers.find(u => u.username === username);
-            if(!user) return;
-            document.getElementById('admin-modal-name').innerText = `👤 ${user.nickname} (${user.username}) 的學習報告`;
+        function openAdminModal(uniqueId) {
+            const user = globalUsers.find(u => (u.user_id === uniqueId || u.username === uniqueId)); if(!user) return;
+            document.getElementById('admin-modal-name').innerText = `👤 ${escapeHTML(user.nickname)} (${escapeHTML(user.username)}) 的學習報告`;
+            const userLogs = globalLogs.filter(log => (log.user_id === uniqueId || log.username === uniqueId)); 
+            const validLogs = userLogs.filter(log => log.error_code !== "ERR_INPUT_EMPTY" && log.data_status !== "legacy_missing_payload"); 
+            let totalQ = validLogs.length; let correctQ = validLogs.filter(log => log.is_correct).length;
+            document.getElementById('admin-modal-total').innerText = totalQ; document.getElementById('admin-modal-correct').innerText = totalQ === 0 ? "0%" : Math.round((correctQ / totalQ) * 100) + "%"; document.getElementById('admin-modal-wrong').innerText = totalQ === 0 ? "0%" : Math.round(((totalQ - correctQ) / totalQ) * 100) + "%";
 
-            const userLogs = globalLogs.filter(log => log.username === username);
-            const validLogs = userLogs.filter(log => log.error_code !== "ERR_INPUT_EMPTY"); 
-            let totalQ = validLogs.length;
-            let correctQ = validLogs.filter(log => log.is_correct).length;
-            document.getElementById('admin-modal-total').innerText = totalQ;
-            document.getElementById('admin-modal-correct').innerText = totalQ === 0 ? "0%" : Math.round((correctQ / totalQ) * 100) + "%";
-            document.getElementById('admin-modal-wrong').innerText = totalQ === 0 ? "0%" : Math.round(((totalQ - correctQ) / totalQ) * 100) + "%";
-
-            const progBody = document.getElementById('admin-modal-prog');
-            progBody.innerHTML = '';
-            let progressData = {};
-            try { progressData = typeof user.current_progress === 'string' ? JSON.parse(user.current_progress) : user.current_progress; } catch(e){}
-
-            if (Object.keys(progressData).length === 0 && userLogs.length > 0) {
-                progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#f39c12; font-weight:bold; padding:20px;">🌟 升級前的舊紀錄！已保留總星數。</td></tr>';
-            } else {
-                let hasProgress = false;
-                for (const [island, zones] of Object.entries(progressData)) {
-                    if (typeof zones !== 'object') continue;
-                    for (const [zone, records] of Object.entries(zones)) {
-                        if (Array.isArray(records) && records.length > 0) {
-                            hasProgress = true;
-                            let zoneZh = zone === "LEARNING" ? "概念學習區" : (zone === "PRACTICE" ? "適性練習區" : "掌握確認區");
-                            let bestRecord = records.reduce((best, current) => { let bStar = typeof best === 'object' ? (best.stars || 0) : (typeof best === 'number' ? best : 0); let cStar = typeof current === 'object' ? (current.stars || 0) : (typeof current === 'number' ? current : 0); return cStar > bStar ? current : best; }, records[0]);
-                            let acc = typeof bestRecord === 'object' && bestRecord.accuracy ? bestRecord.accuracy : "--";
-                            let stars = typeof bestRecord === 'object' && bestRecord.stars ? bestRecord.stars : (typeof bestRecord === 'number' ? bestRecord : 0);
-                            let date = typeof bestRecord === 'object' && bestRecord.date ? bestRecord.date : "舊版紀錄";
-                            progBody.innerHTML += `<tr><td>${island}</td><td>${zoneZh}</td><td>${acc === "--" ? acc : acc+"%"}</td><td style="color:#f39c12;">${stars > 0 ? "⭐".repeat(stars) : "完成"}</td><td>${date}</td></tr>`;
-                        }
+            const progBody = document.getElementById('admin-modal-prog'); progBody.innerHTML = ''; let progressData = {}; try { progressData = typeof user.current_progress === 'string' ? JSON.parse(user.current_progress) : user.current_progress; } catch(e){}
+            let hasLegacy = userLogs.some(log => log.data_status === "legacy_missing_payload"); let hasProgress = false;
+            
+            for (const [island, zones] of Object.entries(progressData)) {
+                if (typeof zones !== 'object') continue;
+                for (const [zone, records] of Object.entries(zones)) {
+                    if (Array.isArray(records) && records.length > 0) {
+                        hasProgress = true; let zoneZh = zone === "LEARNING" ? "概念學習區" : (zone === "PRACTICE" ? "適性練習區" : "掌握確認區");
+                        let bestRecord = records.reduce((best, current) => { let bStar = typeof best === 'object' ? (best.stars || 0) : (typeof best === 'number' ? best : 0); let cStar = typeof current === 'object' ? (current.stars || 0) : (typeof current === 'number' ? current : 0); return cStar > bStar ? current : best; }, records[0]);
+                        let acc = typeof bestRecord === 'object' && bestRecord.accuracy ? bestRecord.accuracy : "--"; let stars = typeof bestRecord === 'object' && bestRecord.stars ? bestRecord.stars : (typeof bestRecord === 'number' ? bestRecord : 0); let date = typeof bestRecord === 'object' && bestRecord.date ? bestRecord.date : "新版紀錄";
+                        progBody.innerHTML += `<tr><td>${island}</td><td>${zoneZh}</td><td>${acc === "--" ? acc : acc+"%"}</td><td style="color:#f39c12;">${stars > 0 ? "⭐".repeat(stars) : "完成"}</td><td>${date}</td></tr>`;
                     }
                 }
-                if(!hasProgress) progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6;">尚無過關紀錄</td></tr>';
             }
+            if(hasLegacy && !hasProgress) progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#f39c12; font-weight:bold; padding:20px;">🌟 升級前的舊紀錄！已保留總星數。</td></tr>';
+            else if(!hasProgress) progBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#95a5a6;">尚無過關紀錄</td></tr>';
 
-            const wrongBody = document.getElementById('admin-modal-wrong-list');
-            wrongBody.innerHTML = '';
-            const wrongLogs = validLogs.filter(log => !log.is_correct).reverse(); 
-            if(wrongLogs.length === 0) {
-                wrongBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#27ae60; font-weight:bold;">沒有錯題紀錄！</td></tr>';
-            } else {
+            const wrongBody = document.getElementById('admin-modal-wrong-list'); wrongBody.innerHTML = ''; const wrongLogs = validLogs.filter(log => !log.is_correct).reverse(); 
+            if(wrongLogs.length === 0) { wrongBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#27ae60; font-weight:bold;">沒有錯題紀錄！</td></tr>'; } 
+            else {
                 wrongLogs.slice(0, 20).forEach(log => {
-                    let analysis = (log.error_diagnosis || "單純計算失誤").replace("⚠️ ", "");
-                    wrongBody.innerHTML += `<tr><td>${log.island || '未知'}</td><td style="font-size:1.2rem; font-weight:bold; letter-spacing:2px;">${log.question_text || '?'}</td><td style="color:#e74c3c; font-weight:bold; font-size:1.2rem;">${log.student_answer}</td><td><span style="font-size:0.8rem; color:#7f8c8d;">系統判定：${log.error_code}</span><div class="err-analysis">💡 ${analysis}</div></td></tr>`;
+                    let analysis = escapeHTML(log.error_diagnosis || "單純計算失誤").replace("⚠️ ", ""); let textStyle = log.island === "應用題島" ? "font-size:1rem; font-weight:normal;" : "font-size:1.2rem; font-weight:bold; letter-spacing:2px;";
+                    wrongBody.innerHTML += `<tr><td>${escapeHTML(log.island || '未知')}</td><td style="${textStyle}">${escapeHTML(log.question_text || '?')}</td><td style="color:#e74c3c; font-weight:bold; font-size:1.2rem;">${escapeHTML(log.student_answer)}</td><td><span style="font-size:0.8rem; color:#7f8c8d;">系統判定：${escapeHTML(log.error_code)}</span><div class="err-analysis">💡 ${analysis}</div></td></tr>`;
                 });
             }
             document.getElementById('admin-student-modal').style.display = 'flex';
         }
-
         function closeAdminModal() { document.getElementById('admin-student-modal').style.display = 'none'; }
     </script>
 </body>
 </html>
+```
